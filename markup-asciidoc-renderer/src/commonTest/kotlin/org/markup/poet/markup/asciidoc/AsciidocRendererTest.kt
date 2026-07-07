@@ -29,6 +29,29 @@ class AsciidocRendererTest {
     }
 
     @Test
+    fun articleTitleRendersAsDocumentTitle() {
+        val markup = article("Doc Title") {
+            section("First") {
+                +"body"
+                section("Nested") {}
+            }
+        }
+
+        assertEquals(
+            """
+            |= Doc Title
+            |
+            |== First
+            |
+            |body
+            |
+            |=== Nested
+            |""".trimMargin(),
+            markup.renderAsciidoc(),
+        )
+    }
+
+    @Test
     fun nestedSectionHeadingsUseSingleSpace() {
         val markup = article {
             section("A") {

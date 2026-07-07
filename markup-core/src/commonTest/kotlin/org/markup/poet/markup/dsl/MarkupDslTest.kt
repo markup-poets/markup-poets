@@ -40,6 +40,31 @@ class MarkupDslTest {
     }
 
     @Test
+    fun articleWithTitleStartsSectionsAtLevelTwo() {
+        val markup = article("Doc Title") {
+            section("First") {
+                section("Nested") {}
+            }
+        }
+
+        assertEquals("Doc Title", markup.title)
+        val first = markup.blocks[0] as Section
+        val nested = first.blocks[0] as Section
+        assertEquals(2, first.level)
+        assertEquals(3, nested.level)
+    }
+
+    @Test
+    fun articleWithoutTitleHasEmptyTitle() {
+        val markup = article {
+            section("S") {}
+        }
+
+        assertEquals("", markup.title)
+        assertEquals(1, (markup.blocks[0] as Section).level)
+    }
+
+    @Test
     fun nestedSectionsGetIncreasingLevels() {
         val markup = article {
             section("L1") {

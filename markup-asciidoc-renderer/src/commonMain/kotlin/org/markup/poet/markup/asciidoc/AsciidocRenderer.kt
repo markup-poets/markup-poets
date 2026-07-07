@@ -18,12 +18,21 @@ fun Markup.renderAsciidoc(): String = buildString { renderAsciidocTo(this) }
 
 /**
  * Renders the document as AsciiDoc source text into [out].
- * Top-level blocks are separated by a blank line.
+ * A non-blank [Markup.title] becomes the `=` document title line;
+ * top-level blocks are separated by a blank line.
  */
 fun Markup.renderAsciidocTo(out: Appendable) {
-    blocks.forEachIndexed { index, block ->
-        if (index > 0) out.append('\n')
-        renderBlock(block, out)
+    if (title.isNotBlank()) {
+        out.append("= ").append(title).append('\n')
+        blocks.forEach { block ->
+            out.append('\n')
+            renderBlock(block, out)
+        }
+    } else {
+        blocks.forEachIndexed { index, block ->
+            if (index > 0) out.append('\n')
+            renderBlock(block, out)
+        }
     }
 }
 

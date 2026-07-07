@@ -16,7 +16,7 @@ import org.markup.poet.markup.model.TableRow
 annotation class MarkupPoetDsl
 
 /**
- * Entry point of the markup DSL.
+ * Entry point of the markup DSL. Sections start at level 1.
  *
  * ```kotlin
  * val doc = article {
@@ -27,6 +27,14 @@ annotation class MarkupPoetDsl
  * ```
  */
 fun article(content: ArticleScope.() -> Unit): Markup = ArticleBuilder().apply(content).build()
+
+/**
+ * Entry point of the markup DSL with a document title. [title] becomes the
+ * document title and sections start at level 2, matching the AsciiDoc
+ * convention where level 1 (`=`) is the document title.
+ */
+fun article(title: String, content: ArticleScope.() -> Unit): Markup =
+    ArticleBuilder(title).apply(content).build()
 
 @MarkupPoetDsl
 interface ArticleScope {
@@ -91,14 +99,15 @@ interface RowScope {
     fun cell(content: String)
 }
 
-private class ArticleBuilder : ArticleScope {
+private class ArticleBuilder(private val title: String = "") : ArticleScope {
     private val blocks = mutableListOf<Block>()
+    private val sectionLevel = if (title.isBlank()) 1 else 2
 
     override fun section(title: String, id: String, content: SectionScope.() -> Unit) {
-        blocks.add(SectionBuilder(id = id, title = title, level = 1).apply(content).build())
+        blocks.add(SectionBuilder(id = id, title = title, level = sectionLevel).apply(content).build())
     }
 
-    fun build() = Markup(blocks.toList())
+    fun build() = Markup(blocks.toList(), title)
 }
 
 private class SectionBuilder(

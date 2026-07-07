@@ -18,17 +18,15 @@ import org.markup.poet.markup.dsl.article
 import org.markup.poet.markup.model.ListType
 import org.markup.poet.markup.asciidoc.renderAsciidoc
 
-val doc = article {
-    section("Markup Poet", id = "markup-poet") {
+val doc = article("Markup Poet") {
+    section("Usage") {
         +"A DSL for markup documents."
-        section("Usage") {
-            code("kotlin") {
-                +"val doc = article {}"
-            }
-            list(ListType.ORDERED) {
-                +"build"
-                +"render"
-            }
+        code("kotlin") {
+            +"val doc = article {}"
+        }
+        list(ListType.ORDERED) {
+            +"build"
+            +"render"
         }
     }
 }
@@ -39,12 +37,11 @@ println(doc.renderAsciidoc())
 produces AsciiDoc source text:
 
 ```asciidoc
-[#markup-poet]
 = Markup Poet
 
-A DSL for markup documents.
-
 == Usage
+
+A DSL for markup documents.
 
 [source,kotlin]
 ----
@@ -55,7 +52,7 @@ val doc = article {}
 . render
 ```
 
-Note: section nesting starts at `=` for top-level sections. In AsciiDoc convention `=` is the document title, so for standard article layouts start your content sections one level down.
+`article(title) { }` renders the title as the `=` document title and starts sections at `==`, following AsciiDoc convention. The title-less form `article { }` starts sections at `=` instead.
 
 ## Modules
 

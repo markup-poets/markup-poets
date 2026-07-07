@@ -1,9 +1,10 @@
 package org.markup.poet.markup.model
 
 /**
- * A markup document: an ordered list of top-level blocks.
+ * A markup document: an ordered list of top-level blocks, with an optional
+ * document title (empty string means "no title").
  */
-data class Markup(val blocks: List<Block>)
+data class Markup(val blocks: List<Block>, val title: String = "")
 
 /**
  * A block element of a markup document.
