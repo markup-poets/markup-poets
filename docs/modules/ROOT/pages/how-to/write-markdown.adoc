@@ -1,0 +1,105 @@
+= Write Markdown output
+
+Write the same document model as Markdown (GitHub-flavored) instead of — or in addition to — AsciiDoc. The model stays format-agnostic; only the writer call changes.
+
+*Prerequisites:* a Kotlin project with `markup-markdown-writer` on the classpath (it brings `markup-document` and `markup-table` transitively).
+
+== 1. Add the dependency
+
+[source,kotlin,subs="attributes+"]
+----
+dependencies {
+    implementation("{maven-group}:markup-markdown-writer:{artifact-version}")
+}
+----
+
+== 2. Call toMarkdown()
+
+Section ids become HTML anchors, since Markdown has no native anchor syntax:
+
+[source,kotlin]
+----
+import org.markup.poet.dsl.document.article
+import org.markup.poet.dsl.write.markdown.toMarkdown
+
+val doc = article {
+    section("Intro", id = "intro") {
+        +"text"
+    }
+}
+
+println(doc.toMarkdown())
+----
+
+[source,markdown]
+----
+<a id="intro"></a>
+# Intro
+
+text
+----
+
+== 3. Write tables
+
+Table titles become a bold line (GFM has no table caption), and the id becomes an anchor as above:
+
+[source,kotlin]
+----
+val doc = article {
+    section("S") {
+        table("Greetings", id = "table_id") {
+            header {
+                cell("col 1")
+                cell("col 2")
+            }
+            row("Hello", "World")
+            row("Hola", "Mundo")
+        }
+    }
+}
+----
+
+[source,markdown]
+----
+# S
+
+<a id="table_id"></a>
+**Greetings**
+
+| col 1 | col 2 |
+| --- | --- |
+| Hello | World |
+| Hola | Mundo |
+----
+
+== GFM deviations to be aware of
+
+Where GFM lacks a native construct, the writer maps rather than drops silently:
+
+* block ids become `<a id="..."></a>` anchor lines
+* table titles become a bold `**title**` line
+* headerless tables get a synthesized empty header row (GFM tables require one)
+* image width/height are dropped (no native syntax)
+
+The complete mapping is in xref:reference/markdown-mapping.adoc[Markdown (GFM) mapping].
+
+== Write both formats from one model
+
+The payoff of a format-agnostic model: build once, write to every format you need.
+
+[source,kotlin]
+----
+import org.markup.poet.dsl.write.asciidoc.toAsciidoc
+import org.markup.poet.dsl.write.markdown.toMarkdown
+
+val doc = article("Release notes") {
+    section("Changes") {
+        +"Initial release."
+    }
+}
+
+val adoc = doc.toAsciidoc()   // for the docs site
+val md = doc.toMarkdown()     // for the GitHub release page
+----
+
+Both writers offer the same four output forms (`String`, `Appendable`, `Sink`, `Flow`); see xref:reference/writer-api.adoc[Writer API contract].

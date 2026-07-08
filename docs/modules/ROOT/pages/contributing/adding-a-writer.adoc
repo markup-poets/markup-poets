@@ -1,0 +1,94 @@
+= Adding a new writer module
+
+New output formats (DocBook, reStructuredText, ...) join as sibling writer modules. The pattern is fully established by the existing writers — this page turns it into a checklist. Use `markup-asciidoc-writer` as the primary template and `markup-markdown-writer` as the example of documenting format deviations. Read xref:explanation/writers-design.adoc[How writers are designed] first so you know *why* each step looks the way it does.
+
+The steps below use `<format>` as a placeholder (e.g. `docbook`).
+
+== 1. Create the module
+
+Create `markup-<format>-writer/` with a `build.gradle.kts` mirroring `markup-asciidoc-writer/build.gradle.kts`:
+
+* same plugins (Kotlin Multiplatform, Android KMP library, vanniktech maven-publish) and the same target list (JVM, Android, iOS, Linux, macOS)
+* Android namespace `org.markup.poet.dsl.write.<format>`
+* `commonMain` dependencies: `api` on the model modules you write (`:markup-document` and `:markup-table` for document formats, `:markup-graph` for graph formats), plus `api(libs.kotlinx.io.core)` and `api(libs.kotlinx.coroutines.core)`
+* `commonTest` dependencies: `kotlin-test` and `kotlinx-coroutines-test`
+
+Register it in `settings.gradle.kts`:
+
+[source,kotlin]
+----
+include(":markup-<format>-writer")
+----
+
+== 2. Package
+
+All sources go in `package org.markup.poet.dsl.write.<format>` under `src/commonMain/kotlin/`.
+
+== 3. Implement the chunk generator and the four public forms
+
+For each model type you support, write *one* private lazy generator:
+
+[source,kotlin]
+----
+private fun Markup.<format>Chunks(): Sequence<String> = sequence { /* ... */ }
+----
+
+Then the four public adapters over it — and nothing else renders:
+
+[source,kotlin]
+----
+fun Markup.to<Format>(): String = <format>Chunks().joinToString("")
+fun Markup.write<Format>To(out: Appendable) { <format>Chunks().forEach { out.append(it) } }
+fun Markup.write<Format>To(sink: Sink) { <format>Chunks().forEach { sink.writeString(it) } }
+fun Markup.<format>Flow(): Flow<String> = <format>Chunks().asFlow()
+----
+
+Copy the KDoc wording from `AsciidocWriter.kt`, including the two contract sentences that must appear verbatim in spirit:
+
+* on the `Sink` overload: the sink is neither flushed nor closed; the caller owns its lifecycle
+* on the Flow form: chunks arrive in document order, concatenating all emissions yields exactly `to<Format>()`, and chunk boundaries are an implementation detail
+
+== 4. Document mapping deviations — in two places
+
+Every format forces mapping decisions (missing captions, anchors, dimensions, ...). Record each decision:
+
+* as a *file-header comment* in the writer source — see the top of `markup-markdown-writer/src/commonMain/kotlin/org/markup/poet/dsl/write/markdown/MarkdownWriter.kt` for the pattern (a short `/* ... */` bulleted list before the first declaration)
+* as a *reference page* `reference/<format>-mapping.adoc`, following xref:reference/markdown-mapping.adoc[Markdown (GFM) mapping], with a nav entry added to `docs/modules/ROOT/nav.adoc` in the Reference section
+
+== 5. Tests
+
+Two test classes in `src/commonTest/kotlin/`, matching the conventions in xref:contributing/index.adoc[Contributing]:
+
+* a *golden-output* test class asserting exact source text via `trimMargin()` strings, covering every block type you map
+* `<Format>WriterStreamsTest` mirroring `AsciidocWriterStreamsTest`, with tests for:
+** `Sink` round-trip equals `to<Format>()`
+** `Appendable` output equals `to<Format>()`
+** empty model writes nothing (both sink and string forms)
+** Flow chunks concatenate to exactly `to<Format>()`
+** the current chunk shape (title chunk, one chunk per top-level block — or your generator's actual shape)
+
+Run them per target while developing:
+
+[source,bash]
+----
+./gradlew :markup-<format>-writer:jvmTest :markup-<format>-writer:linuxX64Test
+----
+
+== 6. Wire up metadata and docs
+
+* Add the module row to the README architecture table.
+* Add the module to xref:reference/modules.adoc[Modules and coordinates].
+* Create `markup-<format>-writer/gradle.properties` with the publishing coordinates, mirroring the AsciiDoc writer's:
+
+[source,properties]
+----
+POM_ARTIFACT_ID=markup-<format>-writer
+POM_NAME=Markup Poet <Format> Writer
+POM_DESCRIPTION=Writes Markup Poet models as <Format> source text
+----
+
+The artifact will publish under `{maven-group}` with the shared `VERSION_NAME` from the root `gradle.properties` on the next release (see xref:contributing/release-process.adoc[Release process]).
+
+== Done when
+
+A PR adding a writer is complete when `./gradlew build` is green, both test classes exist and pass on JVM and at least one native target, the mapping is documented in both places, and the module appears in `settings.gradle.kts`, the README table, the modules reference, and the nav.

@@ -1,0 +1,70 @@
+= Sub-DSL architecture
+
+This page explains why Markup Poet is split the way it is: independent sub-DSLs describing an abstract document model, and separate writer modules that turn those models into markup source text. If you want the module list and coordinates, see xref:reference/modules.adoc[Modules and coordinates]; this page covers the reasoning behind the split.
+
+== The core idea: composable sub-DSLs
+
+Markup Poet is not one big document DSL. It is a family of small, format-agnostic models, each with its own builder DSL, that compose:
+
+* `markup-table` — a table model and `table { }` DSL, usable entirely on its own
+* `markup-graph` — a graph model (nodes, edges, attributes) and `graph { }` / `digraph { }` DSL, also standalone
+* `markup-document` — the document model (`Markup`, sections, paragraphs, code blocks, lists, images) and the `article { }` DSL, which *embeds* the table sub-DSL
+
+The alternative — a single monolithic DSL where tables are just another block type of the document builder — was rejected because it would make the simplest use cases pay for the largest one. A caller who only needs a table (say, formatting query results for a terminal report) should not have to construct a document, and should not pull in document types at all.
+
+Composition works by wrapping, not by duplication. In the document model, a table appears as:
+
+[source,kotlin]
+----
+data class TableBlock(
+    override val id: String,
+    val title: String,
+    val table: Table,   // the standalone markup-table type, unchanged
+) : Block()
+----
+
+`TableBlock` wraps the standalone `Table` value as-is. On the DSL side, `SectionScope.table { }` delegates to the same `TableBuilder` that the standalone `table { }` entry point uses. The consequence is worth spelling out: *nested and standalone table code is literally the same builder against the same scope interfaces*. There is no "document-flavoured" table DSL to keep in sync with the standalone one, no adapter layer, and anything you can build standalone you can drop into a document. (This composition has one subtle scoping consequence, discussed in xref:explanation/dsl-scoping.adoc[DSL scoping and @DslMarker].)
+
+== Zero-dependency models, dependency-carrying writers
+
+The model modules (`markup-table`, `markup-document`, `markup-graph`) have *no dependencies* beyond the Kotlin standard library. This is deliberate: a model module may end up on classpaths that care a lot about weight — Android apps, iOS frameworks, Gradle plugins — and a pure-data model has no business dragging in IO or coroutine machinery.
+
+The writer modules are where the dependencies live: they use kotlinx-io (`Sink` output) and kotlinx-coroutines (`Flow` output), so depending on `markup-asciidoc-writer` brings those onto your classpath. The split gives users the choice — build models cheaply everywhere, pay for streaming IO only where you actually write.
+
+== Scope: markup source text, not presentation
+
+Markup Poet writers produce *markup source text* — AsciiDoc, Markdown, Graphviz DOT — and stop there. Rendering to presentation formats (HTML, PDF, SVG) is explicitly out of scope.
+
+This is a boundary decision, not a missing feature. Mature toolchains already exist downstream: feed the AsciiDoc output to an AsciiDoc processor (Asciidoctor, Antora), the Markdown to any GFM renderer, the DOT text to Graphviz (`dot -Tsvg`). Reimplementing those pipelines in Kotlin Multiplatform would be an enormous, permanently-behind effort, and would couple this library's release cycle to presentation concerns (themes, fonts, page layout) that have nothing to do with document structure. Writing well-formed source text is a small, testable contract; rendering it is somebody else's well-solved problem.
+
+== Module graph
+
+[mermaid]
+----
+graph LR
+    subgraph models [Model modules — zero deps]
+        table[markup-table]
+        document[markup-document]
+        graphm[markup-graph]
+    end
+    subgraph writers [Writer modules — kotlinx-io, coroutines]
+        adoc[markup-asciidoc-writer]
+        md[markup-markdown-writer]
+        dot[markup-dot-writer]
+    end
+    table --> document
+    document --> adoc
+    table --> adoc
+    document --> md
+    table --> md
+    graphm --> dot
+    adoc --> A[AsciiDoc source text]
+    md --> M[Markdown GFM source text]
+    dot --> D[Graphviz DOT source text]
+----
+
+Each writer depends only on the models it writes; `markup-dot-writer` knows nothing about documents, and the document writers know nothing about graphs. New formats join as sibling writer modules (see xref:contributing/adding-a-writer.adoc[Adding a new writer module]), and new sub-DSLs join as sibling model modules.
+
+== Place in the Markup Poet family
+
+This project is the *DSL poet* of the {url-family}[Markup Poet family] — the member concerned with programmatically *writing* markup. Its counterpart, {url-asciidoc-kmp}[asciidoc-kmp], is the AsciiDoc *parser*: it parses the kind of source text this project writes. Keeping writer and parser as separate projects keeps each one's dependency surface and release cadence independent, while the shared family conventions (Kotlin Multiplatform, `{maven-group}` coordinates, Apache-2.0) make them natural companions in a pipeline: generate with the DSL poet, process or round-trip with the parser.

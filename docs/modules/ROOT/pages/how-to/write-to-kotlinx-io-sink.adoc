@@ -1,0 +1,83 @@
+= Write to a kotlinx-io Sink
+
+Write a document directly to a file, socket, or any other kotlinx-io `Sink` without building the whole output `String` in memory first.
+
+*Prerequisites:* a writer module on the classpath (e.g. `markup-asciidoc-writer`); it brings kotlinx-io with it.
+
+== 1. Know the lifecycle rule
+
+`writeAsciidocTo(sink)` writes the document UTF-8 encoded. The sink is *neither flushed nor closed* — the caller owns its lifecycle. This lets you write several documents (or other data) into one sink and flush once.
+
+== 2. Verify with an in-memory Buffer
+
+`kotlinx.io.Buffer` is both a `Sink` and a `Source`, which makes a round trip easy to test:
+
+[source,kotlin]
+----
+import kotlinx.io.Buffer
+import kotlinx.io.readString
+import org.markup.poet.dsl.document.article
+import org.markup.poet.dsl.write.asciidoc.toAsciidoc
+import org.markup.poet.dsl.write.asciidoc.writeAsciidocTo
+
+val doc = article("Doc") {
+    section("S") {
+        +"para"
+    }
+}
+
+val buffer = Buffer()
+doc.writeAsciidocTo(buffer)
+check(buffer.readString() == doc.toAsciidoc())
+----
+
+== 3. Write to a file
+
+Use `SystemFileSystem` from `kotlinx.io.files`, buffer the raw sink, and let `use { }` handle flush-and-close (which the writer deliberately does not do):
+
+[source,kotlin]
+----
+import kotlinx.io.buffered
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
+
+SystemFileSystem.sink(Path("out.adoc")).buffered().use { sink ->
+    doc.writeAsciidocTo(sink)
+}
+----
+
+This works on all supported targets — JVM, Android, iOS, Linux, macOS.
+
+== 4. Or use the Appendable overload
+
+For JVM interop, `writeAsciidocTo(out: Appendable)` accepts a `StringBuilder`, `java.io.Writer`, or anything else appendable:
+
+[source,kotlin]
+----
+val sb = StringBuilder()
+doc.writeAsciidocTo(sb)
+// or: java.io.FileWriter("out.adoc").use { doc.writeAsciidocTo(it) }
+----
+
+== Choosing an output form
+
+Every writer offers the same four forms; pick by destination:
+
+[cols="1,2"]
+|===
+|Form |Use for
+
+|`toAsciidoc(): String`
+|small documents, tests, further in-memory processing
+
+|`writeAsciidocTo(Appendable)`
+|JVM `Writer` interop, `StringBuilder` accumulation
+
+|`writeAsciidocTo(Sink)`
+|files, network, multiplatform I/O without intermediate strings
+
+|`asciidocFlow(): Flow<String>`
+|async streaming with backpressure — see xref:how-to/stream-with-flow.adoc[Stream output with Flow]
+|===
+
+The Markdown and DOT writers mirror all four forms; see xref:reference/writer-api.adoc[Writer API contract].

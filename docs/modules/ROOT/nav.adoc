@@ -1,0 +1,29 @@
+* xref:index.adoc[Overview]
+
+.Tutorials
+* xref:tutorials/getting-started.adoc[Getting started]
+* xref:tutorials/graphs-and-dot.adoc[Graphs and Graphviz DOT]
+
+.How-to guides
+* xref:how-to/standalone-table.adoc[Build a standalone table]
+* xref:how-to/write-markdown.adoc[Write Markdown output]
+* xref:how-to/stream-with-flow.adoc[Stream output with Flow]
+* xref:how-to/write-to-kotlinx-io-sink.adoc[Write to a kotlinx-io Sink]
+* xref:how-to/dag-analysis.adoc[Analyze DAGs]
+
+.Reference
+* xref:reference/modules.adoc[Modules and coordinates]
+* xref:reference/writer-api.adoc[Writer API contract]
+* xref:reference/asciidoc-mapping.adoc[AsciiDoc mapping]
+* xref:reference/markdown-mapping.adoc[Markdown (GFM) mapping]
+* xref:reference/dot-mapping.adoc[DOT mapping]
+
+.Explanation
+* xref:explanation/architecture.adoc[Sub-DSL architecture]
+* xref:explanation/dsl-scoping.adoc[DSL scoping and @DslMarker]
+* xref:explanation/writers-design.adoc[How writers are designed]
+
+.Contributing
+* xref:contributing/index.adoc[Contributing]
+* xref:contributing/adding-a-writer.adoc[Adding a new writer module]
+* xref:contributing/release-process.adoc[Release process]

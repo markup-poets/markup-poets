@@ -1,0 +1,104 @@
+= Markdown (GFM) mapping
+
+How `markup-markdown-writer` maps model elements to Markdown (GitHub-flavored) source text.
+
+== Document structure
+
+* A non-blank document title is written as `# Title` on its own line.
+* Top-level blocks are separated by one blank line (also between the title and the first block).
+* Inside a section, one blank line precedes every child block.
+
+== Block mapping
+
+[cols="1,2,2"]
+|===
+|Model element |Produced Markdown |Notes
+
+|`Section`
+a|
+----
+<a id="id"></a>
+## Title
+----
+|`#` repeated `level` times, then a single space and the title. The anchor line appears only when the id is non-blank.
+
+|`Paragraph`
+|the text followed by a newline
+|no wrapping or escaping is applied
+
+|`CodeBlock`
+a|
+----
+```kotlin
+code
+```
+----
+|the language is appended directly to the opening fence; a blank language yields a bare `+```+` fence.
+
+|`BlockImage`
+a|
+----
+<a id="id"></a>
+[![alt](path "Title")](url)
+----
+|base form `![alt](path "title")`; the `"title"` part appears only when the title is non-blank; a missing alt becomes an empty string. When a link is set, the image is wrapped in `[...](link)`. The anchor line appears only when the id is non-blank.
+
+|`ListBlock`
+a|
+----
+1. first
+    1. nested
+- bullet
+----
+|`-` for unordered items; ordered items get an incrementing `n.` marker. Each nesting level adds 4 spaces of indentation; numbering restarts in every nested list.
+
+|`TableBlock`
+a|
+----
+<a id="id"></a>
+**Title**
+
+\| a \| b \|
+----
+|anchor and bold-title lines appear only when non-blank, followed by one blank line when either is present, then the table mapping below.
+|===
+
+== Table mapping
+
+* Each row is written as `+| cell | cell |+` — cells padded with one space on each side.
+* The header row is followed by a delimiter row: `+| --- |+` repeated per column.
+* Pipe characters inside cell content are escaped as `+\|+`.
+* GFM tables require a header row; a headerless `Table` gets a synthesized header row of empty cells. The column count is the maximum cell count across header and rows.
+
+[source,markdown]
+----
+| col 1 | col 2 |
+| --- | --- |
+| Hello | World |
+----
+
+== Deviations from the AsciiDoc output
+
+Where GFM lacks a native construct, the writer maps rather than drops silently:
+
+[cols="1,2"]
+|===
+|Model feature |GFM mapping
+
+|block ids
+|`<a id="..."></a>` HTML anchor lines (no native anchor syntax; GFM inline HTML renders them as link targets)
+
+|table titles
+|a bold `**title**` line followed by a blank line (no native table caption)
+
+|headerless tables
+|synthesized header row of empty cells (GFM tables require a header row)
+
+|image width/height
+|dropped (no native syntax)
+|===
+
+== See also
+
+* xref:reference/writer-api.adoc[Writer API contract] — the four output forms
+* xref:reference/asciidoc-mapping.adoc[AsciiDoc mapping] — the same model in AsciiDoc

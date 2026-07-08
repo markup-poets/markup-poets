@@ -1,0 +1,131 @@
+= Graphs and Graphviz DOT
+
+In this tutorial you build a directed graph with the graph DSL, style its nodes and edges, and write it as Graphviz DOT source text ready for rendering.
+
+== Step 1: Add the dependencies
+
+You need `markup-graph` (the graph model and DSL) and `markup-dot-writer` (the DOT writer):
+
+[source,kotlin,subs="attributes+"]
+----
+kotlin {
+    sourceSets {
+        commonMain.dependencies {
+            implementation("{maven-group}:markup-graph:{artifact-version}")
+            implementation("{maven-group}:markup-dot-writer:{artifact-version}")
+        }
+    }
+}
+----
+
+== Step 2: Build your first digraph
+
+Create a directed graph with two nodes and one edge:
+
+[source,kotlin]
+----
+import org.markup.poet.dsl.graph.digraph
+import org.markup.poet.dsl.write.dot.toDot
+
+val g = digraph("Pipeline") {
+    node("parse") { shape = "box" }
+    node("write") { shape = "box" }
+    edge("parse", "write") { label = "model" }
+}
+
+println(g.toDot())
+----
+
+You should see:
+
+[source,dot]
+----
+digraph Pipeline {
+  parse [shape=box];
+  write [shape=box];
+  parse -> write [label=model];
+}
+----
+
+`digraph` builds a directed graph; `graph` builds an undirected one (edges are written with `--` instead of `->`).
+
+== Step 3: Style nodes and edges
+
+Nodes have typed `shape`, `color`, and `label` properties; edges have `style`, `color`, and `label`:
+
+[source,kotlin]
+----
+val g = digraph("StyledGraph") {
+    node("A") {
+        shape = "box"
+        color = "red"
+    }
+    node("B") {
+        shape = "ellipse"
+        color = "blue"
+    }
+    edge("A", "B") {
+        style = "dashed"
+        color = "black"
+    }
+    edge("B", "A") {
+        style = "bold"
+        color = "orange"
+    }
+}
+----
+
+`toDot()` produces:
+
+[source,dot]
+----
+digraph StyledGraph {
+  A [shape=box, color=red];
+  B [shape=ellipse, color=blue];
+  A -> B [style=dashed, color=black];
+  B -> A [style=bold, color=orange];
+}
+----
+
+== Step 4: Set arbitrary attributes
+
+Beyond the typed properties, `attr(name, value)` passes any attribute through at graph, node, and edge level, so the full DOT attribute vocabulary is available:
+
+[source,kotlin]
+----
+val g = digraph("Pipeline") {
+    attr("rankdir", "LR")
+    node("A") {
+        shape = "box"
+        attr("penwidth", "2")
+    }
+    edge("A", "B") {
+        attr("weight", "3")
+    }
+}
+----
+
+[source,dot]
+----
+digraph Pipeline {
+  rankdir=LR;
+  A [shape=box, penwidth=2];
+  A -> B [weight=3];
+}
+----
+
+Note that the edge references node `B` without a matching `node("B")` declaration. That is allowed: edges may reference undeclared ids, which become implicit nodes, just as in DOT itself.
+
+== Step 5: Render with Graphviz
+
+Write the output to a file and run Graphviz:
+
+[source,bash]
+----
+dot -Tsvg pipeline.dot -o pipeline.svg
+----
+
+== Next steps
+
+* Check graphs for cycles and sort them topologically: xref:how-to/dag-analysis.adoc[Analyze DAGs]
+* Look up how the graph model maps to DOT syntax: xref:reference/dot-mapping.adoc[DOT mapping]

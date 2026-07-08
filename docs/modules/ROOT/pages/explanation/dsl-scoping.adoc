@@ -1,0 +1,69 @@
+= DSL scoping and @DslMarker
+
+Markup Poet's builder scopes carry more annotations than a first reading suggests they should. This page explains what `@DslMarker` actually does, why each sub-DSL has its own marker annotation, and why the document scopes are annotated with *two* markers — including the scope-leak bug that the second marker exists to prevent.
+
+== What @DslMarker does
+
+Kotlin resolves names inside a lambda with receiver against a stack of implicit receivers: the innermost lambda's receiver first, then each enclosing one, walking outward. That is convenient for ordinary code but dangerous in builder DSLs — a call that does not exist on the innermost scope silently resolves against some *outer* scope instead, and the code compiles while doing something quite different from what it says.
+
+`@DslMarker` is Kotlin's fix. You declare a marker annotation and put it on your scope types; then, inside a lambda whose receiver is marked, any *outer* implicit receiver marked with the *same* annotation is suppressed. Calls on it become compile errors unless made explicit (`this@section.text(...)`). The crucial detail for what follows: suppression only happens between receivers that share the *same* marker annotation. Two scopes marked with different `@DslMarker` annotations do not restrict each other at all.
+
+== One marker per sub-DSL
+
+Each sub-DSL declares its own marker in its own module:
+
+* `@MarkupDsl` in `markup-document`
+* `@TableDsl` in `markup-table`
+* `@GraphDsl` in `markup-graph`
+
+Why not a single shared `MarkupPoetDsl` marker? Because the marker would have to live somewhere, and every sub-DSL module would have to depend on that somewhere. That breaks the architecture's central promise — model modules are standalone and zero-dependency (see xref:explanation/architecture.adoc[Sub-DSL architecture]). `markup-table` must be usable with no knowledge of documents, so it cannot import a marker from a shared module, and certainly not from `markup-document`. Separate markers keep each module self-contained.
+
+== The leak: why separate markers alone are not enough
+
+Separate markers create a hole precisely where the sub-DSLs meet. Consider a table nested in a document with *only* the per-module markers:
+
+[source,kotlin]
+----
+article {
+    section("Data") {
+        table {
+            row {
+                +"oops"   // would compile — and not do what it says
+            }
+        }
+    }
+}
+----
+
+`RowScope` (marked `@TableDsl`) has no `unaryPlus`. With no same-marker outer receiver to suppress, resolution walks outward past `TableScope` to the enclosing `SectionScope` (marked `@MarkupDsl` — a *different* marker, so not suppressed), where `String.unaryPlus()` exists and means "append a paragraph". The line compiles and silently appends a `Paragraph` to the enclosing *section* — from inside what reads as a table row. No error, no warning; just a paragraph appearing after the table and a cell that never existed.
+
+== The fix: stack the inner DSL's marker on the outer scopes
+
+The document scopes are annotated with *both* markers. From `Dsl.kt` in `markup-document`:
+
+[source,kotlin]
+----
+// Document scopes carry @TableDsl in addition to @MarkupDsl so that they are
+// suppressed as implicit receivers inside nested table { } lambdas — without
+// it, `table { row { +"oops" } }` would resolve against the outer section.
+
+@MarkupDsl
+@TableDsl
+interface ArticleScope { /* ... */ }
+
+@MarkupDsl
+@TableDsl
+interface SectionScope { /* ... */ }
+----
+
+(`ListScope` and `CodeScope` carry both as well.) Now, inside a `table { }` lambda, the receiver is `@TableDsl`-marked — and the enclosing `SectionScope` carries that same `@TableDsl` marker, so the same-marker rule suppresses it. `+"oops"` inside `row { }` finds no `unaryPlus` anywhere it is allowed to look, and the leak becomes what it should be: a compile error.
+
+Note the direction of the dependency. `markup-document` already depends on `markup-table` (it embeds tables), so importing `@TableDsl` adds no coupling that did not exist. The reverse — `markup-table` knowing about `@MarkupDsl` — is never needed: table scopes are only ever the *inner* DSL, and inner scopes need no protection from a DSL they never contain.
+
+== Rule for future sub-DSLs
+
+This generalizes into the one scoping rule contributors must follow:
+
+*Whichever DSL embeds another must stack the embedded DSL's marker on all of its own scope interfaces.*
+
+If a future `SectionScope.graph { }` embeds the graph sub-DSL, every document scope must also gain `@GraphDsl`. The inner DSL never changes; the outer one takes on the inner's marker. An alternative would have been Kotlin's `@RestrictsSuggestions`-style tricks or explicit-receiver-only APIs, but marker stacking is the idiomatic mechanism, costs one annotation line per scope, and turns a silent data corruption into a compile error — the trade-off is not close.

@@ -1,0 +1,152 @@
+= Getting started
+
+In this tutorial you build your first document with the Markup Poet DSL and write it out as AsciiDoc source text. Along the way you add sections, a code block, a list, and a table.
+
+== Prerequisites
+
+* A Kotlin project (Multiplatform or plain JVM)
+* Gradle
+
+== Step 1: Add the dependencies
+
+You need two modules: `markup-document` (the model and `article` DSL) and `markup-asciidoc-writer` (the AsciiDoc writer). In a Kotlin Multiplatform project:
+
+[source,kotlin,subs="attributes+"]
+----
+kotlin {
+    sourceSets {
+        commonMain.dependencies {
+            implementation("{maven-group}:markup-document:{artifact-version}")
+            implementation("{maven-group}:markup-asciidoc-writer:{artifact-version}")
+        }
+    }
+}
+----
+
+In a plain JVM project, the same coordinates work as ordinary `dependencies { implementation(...) }` entries.
+
+== Step 2: Build your first document
+
+Create a document with one section and print it:
+
+[source,kotlin]
+----
+import org.markup.poet.dsl.document.article
+import org.markup.poet.dsl.write.asciidoc.toAsciidoc
+
+val doc = article("My Document") {
+    section("Intro") {
+        +"Hello"
+    }
+}
+
+println(doc.toAsciidoc())
+----
+
+You should see:
+
+[source,asciidoc]
+----
+= My Document
+
+== Intro
+
+Hello
+----
+
+The unary `+` operator adds a paragraph; `toAsciidoc()` returns the whole document as a `String`.
+
+== Step 3: Grow the document
+
+Add a code block, an ordered list, and a nested section:
+
+[source,kotlin]
+----
+import org.markup.poet.dsl.document.ListType
+
+val doc = article("My Document") {
+    section("Usage") {
+        +"A DSL for markup documents."
+        code("kotlin") {
+            +"val doc = article {}"
+        }
+        list(ListType.ORDERED) {
+            +"build"
+            +"write"
+        }
+        section("Details") {
+            +"Nested sections increase the heading level."
+        }
+    }
+}
+----
+
+`toAsciidoc()` now produces:
+
+[source,asciidoc]
+------
+= My Document
+
+== Usage
+
+A DSL for markup documents.
+
+[source,kotlin]
+----
+val doc = article {}
+----
+
+. build
+. write
+
+=== Details
+
+Nested sections increase the heading level.
+------
+
+== Step 4: Add a table
+
+Tables are built with the same builder as the standalone table DSL, attached to a section via `table(title, id)`:
+
+[source,kotlin]
+----
+val doc = article("My Document") {
+    section("Data") {
+        table("Results", id = "results") {
+            header {
+                cell("name")
+                cell("value")
+            }
+            row("answer", "42")
+        }
+    }
+}
+----
+
+The output gains an anchor from the `id` and a title line:
+
+[source,asciidoc]
+----
+= My Document
+
+== Data
+
+[#results]
+.Results
+|===
+|name|value
+
+| answer
+| 42
+|===
+----
+
+== Document title convention
+
+`article(title) { }` writes the title as the `=` document title and starts sections at `==`, following AsciiDoc convention. The title-less form `article { }` starts sections at `=` instead.
+
+== Next steps
+
+* Build graphs and write DOT: xref:tutorials/graphs-and-dot.adoc[Graphs and Graphviz DOT]
+* Write the same document as Markdown: xref:how-to/write-markdown.adoc[Write Markdown output]
+* Look up how every block maps to AsciiDoc: xref:reference/asciidoc-mapping.adoc[AsciiDoc mapping]

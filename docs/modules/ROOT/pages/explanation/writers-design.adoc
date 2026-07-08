@@ -1,0 +1,54 @@
+= How writers are designed
+
+Every writer module exposes the same four output forms per model type — string, `Appendable`, kotlinx-io `Sink`, and `Flow<String>`. This page explains the internal structure that makes those four forms cheap to provide and safe to trust, and the naming and documentation conventions writers follow. The user-facing contract itself is specified in xref:reference/writer-api.adoc[Writer API contract].
+
+== One chunk generator, four thin adapters
+
+Inside a writer module there is exactly *one* function per model type that knows the output format: a private generator returning a lazy `Sequence<String>` of source-text chunks. In `markup-asciidoc-writer` that is `asciidocChunks()`. The four public functions are adapters over it, each a single expression or loop:
+
+[source,kotlin]
+----
+fun Markup.toAsciidoc(): String = asciidocChunks().joinToString("")
+
+fun Markup.writeAsciidocTo(out: Appendable) {
+    asciidocChunks().forEach { out.append(it) }
+}
+
+fun Markup.writeAsciidocTo(sink: Sink) {
+    asciidocChunks().forEach { sink.writeString(it) }
+}
+
+fun Markup.asciidocFlow(): Flow<String> = asciidocChunks().asFlow()
+
+private fun Markup.asciidocChunks(): Sequence<String> = sequence { /* ... */ }
+----
+
+The point of this shape is that the central promise of the API — *concatenating all Flow emissions equals `toAsciidoc()`* — stops being documentation hope and becomes a testable property. All four forms consume the identical sequence, so agreement between them cannot drift: there is no second rendering path to fall out of sync. The `*StreamsTest` classes (for example `AsciidocWriterStreamsTest`) assert exactly this — sink output equals `toAsciidoc()`, `flow().toList().joinToString("")` equals `toAsciidoc()` — and those assertions actually pin the architecture, because the only way to break them is to break the single generator that everything shares.
+
+The rejected alternative was four independent implementations, or a `String`-first design where the streaming forms chop up a fully materialized string. The first cannot keep its equality promise under maintenance; the second silently defeats the purpose of streaming (peak memory equals full document size regardless of which form you call).
+
+== Naming: "writer" modules, Kotlin-convention functions
+
+Two naming systems coexist deliberately, each at the level where its audience lives:
+
+* *Modules and packages* use pandoc-style *writer* terminology: `markup-asciidoc-writer`, `org.markup.poet.dsl.write.asciidoc`. Anyone coming from document tooling knows what a "writer" is — the thing that serializes a model to a concrete format, the counterpart of a parser.
+* *Functions* follow Kotlin standard-library conventions, because that is what a Kotlin reader's intuition is trained on: `to*` is a pure conversion returning a value, `write*To` is a side effect into a caller-supplied destination, and `*Flow` is a lazy view.
+
+This is why the string form is `toAsciidoc()` and not `writeAsciidoc()`: it writes nothing anywhere — it converts a value to a `String`, exactly like `toString()` or `toList()`. Conversely `writeAsciidocTo(sink)` earns its `write` because the effect happens in the caller's sink. Mixing the systems (a `writeAsciidoc(): String`) would be internally consistent with "writer" branding but would lie to every Kotlin reader.
+
+== Where mapping decisions are documented
+
+Every format forces choices the model does not make for it — Markdown has no table captions, no native anchors, no image dimensions. Writers record these deviations in two places, on purpose:
+
+* a *file-header comment* in the writer source (see the top of `MarkdownWriter.kt` for the pattern: a short bulleted list of each deviation and its chosen mapping), so the decisions travel with the code that implements them and a maintainer editing the renderer sees them without leaving the file;
+* a *reference page* per format (xref:reference/markdown-mapping.adoc[Markdown (GFM) mapping], xref:reference/asciidoc-mapping.adoc[AsciiDoc mapping]), so users can find the same facts without reading source.
+
+The duplication is accepted: the two audiences do not read the same artifact, and the lists are short enough to keep in sync.
+
+== Deliberate non-guarantees
+
+Two things are intentionally left open, and both are stated in the KDoc rather than implied:
+
+*Chunk granularity is unspecified.* The Flow contract promises order and concatenation equality — nothing about where boundaries fall. Currently the title line is one chunk and each top-level block is one chunk, and a shape test observes that, but callers must not depend on it. Fixing granularity in the contract would forbid future optimizations (finer chunks for very large tables, coarser ones to reduce emission overhead) for no user benefit: any consumer that cares about boundaries is already misusing a stream of text fragments.
+
+*Sink lifecycle stays with the caller.* `writeAsciidocTo(sink)` neither flushes nor closes the sink. A writer that closed what it did not open would make composition impossible — writing two documents to one sink, or a document into the middle of a larger stream. The cost is one line of caller responsibility; the benefit is that the writer composes into any IO pipeline.

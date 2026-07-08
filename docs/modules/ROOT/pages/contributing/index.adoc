@@ -1,0 +1,91 @@
+= Contributing
+
+Contributions to Markup Poet are welcome — bug reports, new writer modules, sub-DSL improvements, and documentation. This page covers the repository layout, how to build and test, and what is expected of a pull request. The project is licensed under the Apache License, Version 2.0 ({url-repo}/blob/main/LICENSE[LICENSE]), and all participation is governed by the {url-repo}/blob/main/CODE_OF_CONDUCT.md[Code of Conduct].
+
+== Repository layout
+
+The repository is a Kotlin Multiplatform Gradle build with six modules — three zero-dependency model/DSL modules and three writer modules:
+
+[cols="1,2"]
+|===
+|Module |Contents
+
+|`markup-table`
+|Standalone table model + DSL, zero dependencies
+
+|`markup-document`
+|Abstract document model + `article` DSL, zero dependencies (depends on `markup-table` for embedded tables)
+
+|`markup-graph`
+|Standalone graph model + DSL (nodes/edges), zero dependencies
+
+|`markup-asciidoc-writer`
+|Writes documents and tables as AsciiDoc source text
+
+|`markup-markdown-writer`
+|Writes documents and tables as Markdown (GFM) source text
+
+|`markup-dot-writer`
+|Writes graphs as Graphviz DOT source text
+|===
+
+Keep the split intact: model modules must stay dependency-free, and IO/coroutines dependencies belong in writer modules only. The reasoning is laid out in xref:explanation/architecture.adoc[Sub-DSL architecture]; if your change touches DSL scope interfaces, read xref:explanation/dsl-scoping.adoc[DSL scoping and @DslMarker] first.
+
+== Building and testing
+
+A full build (all targets, all tests):
+
+[source,bash]
+----
+./gradlew build
+----
+
+During development, per-module JVM tests are much faster:
+
+[source,bash]
+----
+./gradlew :markup-document:jvmTest :markup-asciidoc-writer:jvmTest
+----
+
+Native tests run per target. On a Linux host:
+
+[source,bash]
+----
+./gradlew :markup-asciidoc-writer:linuxX64Test
+----
+
+Apple targets (iOS, macOS) require a macOS host; on Linux those compilations are skipped, so a green Linux build does not exercise them. CI covers the full matrix.
+
+== Test conventions
+
+Two kinds of tests are expected in writer modules, and both matter:
+
+*Golden-output tests* assert the exact source text a model produces, written as `trimMargin()` strings next to the assertion:
+
+[source,kotlin]
+----
+assertEquals(
+    """
+    ||===
+    ||col 1|col 2
+    |
+    || Hello
+    || World
+    ||===
+    |""".trimMargin(),
+    t.toAsciidoc(),
+)
+----
+
+The expected text is the specification. If your change alters golden output, the diff must show the golden string changing too — reviewers treat that as the signal that output changed on purpose.
+
+*Streams contract tests*: every writer has a `*StreamsTest` class (for example `AsciidocWriterStreamsTest` in `markup-asciidoc-writer`) verifying the four-forms contract described in xref:explanation/writers-design.adoc[How writers are designed] — the `Sink` round-trip equals `to*()`, the `Appendable` form agrees, the empty model writes nothing, Flow chunks concatenate to exactly `to*()`, and the current chunk shape is observed. New writer behavior must keep all of these green.
+
+== Pull request expectations
+
+* New behavior comes with tests — golden tests for output changes, streams tests for anything touching the chunk generator.
+* Golden strings must never change silently. If they change, say why in the PR description.
+* Mapping decisions (how a model concept maps to format syntax) go in the writer's file-header comment *and* the corresponding reference page — see xref:contributing/adding-a-writer.adoc[Adding a new writer module] for the full checklist.
+* Keep API additions consistent with the existing naming conventions (`to*`, `write*To`, `*Flow`).
+
+Note on wording: the AsciiDoc writer aims for compatibility with AsciiDoc syntax as commonly processed; do not add claims of certification or official conformance to code, docs, or PR text.

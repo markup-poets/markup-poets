@@ -1,0 +1,15 @@
+name: markup-poet
+title: Markup Poet DSL
+version: ~
+nav:
+  - modules/ROOT/nav.adoc
+
+asciidoc:
+  attributes:
+    artifact-version: '0.1.0'
+    maven-group: 'org.markup-poet'
+    min-android-api: '24'
+    url-repo: 'https://github.com/markup-poets/markup-poets'
+    url-family: 'https://github.com/markup-poets'
+    url-asciidoc-kmp: 'https://github.com/markup-poets/asciidoc-kmp'
+    url-maven-central: 'https://central.sonatype.com/namespace/org.markup-poet'

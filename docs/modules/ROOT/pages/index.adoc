@@ -1,0 +1,85 @@
+= Markup Poet DSL
+
+A type-safe Kotlin DSL for building markup documents. You describe a document — sections, paragraphs, code blocks, tables, lists, graphs — against an abstract, format-agnostic model, and writer modules produce AsciiDoc, Markdown (GFM), or Graphviz DOT source text from it. Built with Kotlin Multiplatform, so the same code runs on JVM, Android, iOS, and native desktop targets. This project is the *DSL poet* of the {url-family}[Markup Poet family], alongside the {url-asciidoc-kmp}[AsciiDoc parser].
+
+== Quick start
+
+Build a document in Kotlin:
+
+[source,kotlin]
+----
+import org.markup.poet.dsl.document.article
+import org.markup.poet.dsl.document.ListType
+import org.markup.poet.dsl.write.asciidoc.toAsciidoc
+
+val doc = article("Markup Poet") {
+    section("Usage") {
+        +"A DSL for markup documents."
+        code("kotlin") {
+            +"val doc = article {}"
+        }
+        list(ListType.ORDERED) {
+            +"build"
+            +"write"
+        }
+    }
+}
+
+println(doc.toAsciidoc())
+----
+
+`toAsciidoc()` produces AsciiDoc source text:
+
+[source,asciidoc]
+------
+= Markup Poet
+
+== Usage
+
+A DSL for markup documents.
+
+[source,kotlin]
+----
+val doc = article {}
+----
+
+. build
+. write
+------
+
+== Where to go next
+
+* New here? Follow the xref:tutorials/getting-started.adoc[Getting started] tutorial.
+* Task-focused? Head to the how-to guides, for example xref:how-to/write-markdown.adoc[Write Markdown output], xref:how-to/standalone-table.adoc[Build a standalone table], or xref:how-to/stream-with-flow.adoc[Stream output with Flow].
+* Looking things up? See xref:reference/modules.adoc[Modules and coordinates] and the rest of the reference section.
+* Want to understand the design? Read xref:explanation/architecture.adoc[Sub-DSL architecture].
+* Contributing? Start at xref:contributing/index.adoc[Contributing].
+
+== Coordinates
+
+All artifacts are published under the `{maven-group}` group at version `{artifact-version}` on {url-maven-central}[Maven Central]:
+
+[cols="1,2"]
+|===
+|Artifact |Contents
+
+|`markup-table`
+|Standalone table model + DSL, zero deps
+
+|`markup-document`
+|Abstract document model + `article` DSL, zero deps
+
+|`markup-graph`
+|Standalone graph model + DSL (nodes/edges), zero deps
+
+|`markup-asciidoc-writer`
+|Writes the models as AsciiDoc source text
+
+|`markup-markdown-writer`
+|Writes the models as Markdown (GFM) source text
+
+|`markup-dot-writer`
+|Writes graphs as Graphviz DOT source text
+|===
+
+Supported platforms: JVM, Android (API {min-android-api}+), iOS, Linux, macOS. Licensed under the Apache License, Version 2.0 — see the {url-repo}[repository] for details.

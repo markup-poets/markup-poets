@@ -1,0 +1,41 @@
+= Release process
+
+Releases are tag-driven, following the same approach as {url-asciidoc-kmp}[asciidoc-kmp]: pushing a git tag triggers a GitHub Actions workflow that builds and publishes every module to Maven Central. There is no manual upload step.
+
+== Before tagging
+
+. Ensure `VERSION_NAME` in the root `gradle.properties` is the release version (e.g. `0.2.0`, no `-SNAPSHOT`). The module `build.gradle.kts` files also carry a `version` — keep them in agreement with `VERSION_NAME`.
+. Verify the build is green:
++
+[source,bash]
+----
+./gradlew build
+----
+. Commit the version change.
+
+== Tag and push
+
+[source,bash]
+----
+git tag v0.2.0
+git push origin v0.2.0
+----
+
+Pushing the tag triggers the release workflow (`.github/workflows/publish.yml`). It runs on a macOS runner (required so the Apple targets — iOS, macOS — can be built and published alongside JVM, Android, and Linux), and:
+
+. checks out the tagged commit and sets up JDK 22
+. validates that `signAllPublications=true` is set in `gradle.properties` — the run fails fast if signing is not enabled
+. runs `./gradlew publish`, publishing all modules to Maven Central with in-memory GPG signing
+
+Credentials come from repository secrets: `MAVEN_CENTRAL_USERNAME` and `MAVEN_CENTRAL_PASSWORD` for the Sonatype account, `GPG_PRIVATE_KEY` and `SIGNING_PASSWORD` for signing. No keys or passwords live in the repository.
+
+Artifacts appear under `{maven-group}` on {url-maven-central}[Maven Central] once Sonatype processing completes.
+
+== After the release
+
+. Bump `VERSION_NAME` in `gradle.properties` (and the module `version` values) to the next development version and commit.
+. Update the `artifact-version` attribute in `docs/antora.yml` so the documentation shows the released version.
+
+== Caution
+
+The workflow triggers on *any* pushed tag (`tags: '**'`), not only `v*` tags. Do not push tags to the repository unless you intend to publish a release from that commit.

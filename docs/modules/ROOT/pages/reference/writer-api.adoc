@@ -1,0 +1,86 @@
+= Writer API contract
+
+Every writer module exposes the same four output forms as extension functions on its model types. `X` stands for the format name (`Asciidoc`, `Markdown`, `Dot`); `x` for its lower-case form.
+
+== The four forms
+
+[cols="2,1,2"]
+|===
+|Signature |Returns |Behavior
+
+|`toX(): String`
+|`String`
+|the complete output as one string
+
+|`writeXTo(out: Appendable)`
+|`Unit`
+|appends the output to any `Appendable` (`StringBuilder`, `java.io.Writer`, ...)
+
+|`writeXTo(sink: Sink)`
+|`Unit`
+|writes the output UTF-8 encoded to a kotlinx-io `Sink`
+
+|`xFlow(): Flow<String>`
+|`Flow<String>`
+|cold flow of output chunks in document order
+|===
+
+== Receiver × writer matrix
+
+[cols="2,1,1,1"]
+|===
+|Receiver |markup-asciidoc-writer |markup-markdown-writer |markup-dot-writer
+
+|`Markup` (document)
+|`toAsciidoc()`, `writeAsciidocTo(Appendable)`, `writeAsciidocTo(Sink)`, `asciidocFlow()`
+|`toMarkdown()`, `writeMarkdownTo(Appendable)`, `writeMarkdownTo(Sink)`, `markdownFlow()`
+|—
+
+|`Table` (standalone)
+|same four forms
+|same four forms
+|—
+
+|`Graph`
+|—
+|—
+|`toDot()`, `writeDotTo(Appendable)`, `writeDotTo(Sink)`, `dotFlow()`
+|===
+
+== Packages
+
+[cols="1,2"]
+|===
+|Writer module |Package
+
+|`markup-asciidoc-writer`
+|`org.markup.poet.dsl.write.asciidoc`
+
+|`markup-markdown-writer`
+|`org.markup.poet.dsl.write.markdown`
+
+|`markup-dot-writer`
+|`org.markup.poet.dsl.write.dot`
+|===
+
+Example imports:
+
+[source,kotlin]
+----
+import org.markup.poet.dsl.write.asciidoc.toAsciidoc
+import org.markup.poet.dsl.write.markdown.writeMarkdownTo
+import org.markup.poet.dsl.write.dot.dotFlow
+----
+
+== Contract
+
+* *Concatenation equality* — concatenating all emissions of `xFlow()` yields exactly the string returned by `toX()`; all four forms produce byte-identical output.
+* *Sink lifecycle* — the `Sink` overloads write UTF-8 and neither flush nor close the sink; the caller owns its lifecycle.
+* *Cold flows* — `xFlow()` does no work until collected, and each collection produces the chunks anew.
+* *Chunk boundaries are an implementation detail* — chunks arrive in document order, but their size and split points may change between releases; do not depend on them.
+
+== See also
+
+* xref:reference/asciidoc-mapping.adoc[AsciiDoc mapping]
+* xref:reference/markdown-mapping.adoc[Markdown (GFM) mapping]
+* xref:reference/dot-mapping.adoc[DOT mapping]

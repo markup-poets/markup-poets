@@ -1,0 +1,106 @@
+= AsciiDoc mapping
+
+How `markup-asciidoc-writer` maps model elements to AsciiDoc source text. The writer produces AsciiDoc source text; rendering it is the job of downstream AsciiDoc tooling.
+
+== Document structure
+
+* A non-blank document title is written as `= Title` on its own line.
+* Top-level blocks are separated by one blank line (also between the title and the first block).
+* Inside a section, one blank line precedes every child block.
+
+`article(title) { }` writes the title as the `=` document title and starts sections at `==`, following AsciiDoc convention. The title-less form `article { }` starts sections at `=` instead.
+
+== Block mapping
+
+[cols="1,2,2"]
+|===
+|Model element |Produced AsciiDoc |Notes
+
+|`Section`
+a|
+----
+[#id]
+== Title
+----
+|`=` repeated `level` times, then a single space and the title. The `[#id]` line appears only when the id is non-blank.
+
+|`Paragraph`
+|the text followed by a newline
+|no wrapping or escaping is applied
+
+|`CodeBlock`
+a|
+....
+[source,kotlin]
+----
+code
+----
+....
+|`[source,lang]` when the language is non-blank, plain `[source]` otherwise; the code sits between `----` fences.
+
+|`BlockImage`
+a|
+----
+[#id]
+.Title
+[link=url]
+image::path[alt,120,300]
+----
+|`[#id]`, `.title`, and `[link=url]` lines appear only when the respective field is non-blank. Positional attributes: alt when set; width and height only when *both* are set. If dimensions are set but alt is not, the alt slot is left empty: `image::path[,120,300]`.
+
+|`ListBlock`
+a|
+----
+. first
+.. nested
+* bullet
+----
+|`.` for ordered, `*` for unordered; the marker is repeated once per nesting depth. Nested `ListBlock` items increase the depth by one.
+
+|`TableBlock`
+a|
+----
+[#id]
+.Title
+\|===
+...
+----
+|`[#id]` and `.title` lines appear only when non-blank, then the table mapping below follows directly.
+|===
+
+== Table mapping
+
+Produced by the standalone `Table` writer and by `TableBlock` inside documents:
+
+* The table is fenced by `+|===+` lines.
+* Header cells are written inline on one line: `+|name|value+`.
+* Each body row writes one `+| cell+` line per cell; rows are separated by a blank line (also between the header and the first row).
+* A headerless table gets a synthesized `[cols="1,1,..."]` line before the opening fence, with one `1` per column; the column count is the maximum cell count across header and rows.
+
+Example — table with a header:
+
+[source,asciidoc]
+----
+|===
+|name|value
+
+| answer
+| 42
+|===
+----
+
+Headerless, two columns:
+
+[source,asciidoc]
+----
+[cols="1,1"]
+|===
+| a
+| b
+|===
+----
+
+== See also
+
+* xref:reference/writer-api.adoc[Writer API contract] — the four output forms
+* xref:reference/markdown-mapping.adoc[Markdown (GFM) mapping] — the same model in Markdown

@@ -1,0 +1,100 @@
+= DOT mapping
+
+How `markup-dot-writer` maps the `Graph` model to Graphviz DOT source text.
+
+== Graph structure
+
+[cols="1,2,2"]
+|===
+|Model element |Produced DOT |Notes
+
+|`Graph` header
+a|
+----
+digraph Pipeline {
+----
+|`digraph` for directed graphs, `graph` for undirected; the name follows only when set (quoted per the ID rule below), followed by a space and `{`.
+
+|graph `attrs`
+a|
+----
+  rankdir=LR;
+----
+|one indented `key=value;` line per entry, in insertion order, directly after the header.
+
+|`Node`
+a|
+----
+  parse [shape=box];
+----
+|`  id [attrs];` — the bracket list is omitted entirely when the node has no attributes: `  parse;`.
+
+|`Edge`
+a|
+----
+  parse -> write [label=model];
+----
+|`->` in directed graphs, `--` in undirected. The bracket list is omitted when the edge has no attributes.
+
+|closing
+a|
+----
+}
+----
+|always the final line.
+|===
+
+== Attribute order
+
+Within a node's or edge's `[...]` list, attributes are comma-separated and ordered:
+
+[cols="1,2,2"]
+|===
+|Element |Typed style properties (first, in this order) |Then
+
+|`Node`
+|`shape`, `color`, `label` (from `NodeStyle`, only when set)
+|`attr()` map entries in insertion order
+
+|`Edge`
+|`style`, `color`, `label` (from `EdgeStyle`, only when set)
+|`attr()` map entries in insertion order
+|===
+
+== ID quoting
+
+Every identifier position — node/edge ids, the graph name, attribute names, and attribute values — is written bare when it matches the DOT ID grammar, and double-quoted otherwise:
+
+* *Bare* — matches `[A-Za-z_][A-Za-z0-9_]*` (alphanumeric/underscore, not starting with a digit) or a numeral (`-?(\.[0-9]+|[0-9]+(\.[0-9]*)?)`).
+* *Quoted* — everything else is wrapped in double quotes, with backslashes escaped as `\\` and double quotes as `\"`.
+
+[cols="1,1"]
+|===
+|Input |Written as
+
+|`parse`
+|`parse`
+
+|`3.14`
+|`3.14`
+
+|`two words`
+|`"two words"`
+
+|`say "hi"`
+|`"say \"hi\""`
+|===
+
+== Flow chunking
+
+`dotFlow()` emits chunks in this order (concatenation equals `toDot()` exactly; boundaries are an implementation detail):
+
+. the `graph {`/`digraph {` header including graph attribute lines — one chunk
+. one chunk per node
+. one chunk per edge
+. the closing `}` — one chunk
+
+== See also
+
+* xref:reference/writer-api.adoc[Writer API contract] — the four output forms
+* xref:reference/modules.adoc[Modules and coordinates] — `markup-graph` and `markup-dot-writer`

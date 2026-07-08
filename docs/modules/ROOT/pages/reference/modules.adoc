@@ -1,0 +1,102 @@
+= Modules and coordinates
+
+All modules are published under the group `{maven-group}`, version `{artifact-version}`.
+
+== Modules
+
+[cols="1,2,2,2"]
+|===
+|Module |Coordinates |Contents |Dependencies
+
+|`markup-table`
+|`{maven-group}:markup-table:{artifact-version}`
+|standalone table model + DSL
+|none
+
+|`markup-document`
+|`{maven-group}:markup-document:{artifact-version}`
+|abstract document model + `article` DSL
+|`markup-table` (api)
+
+|`markup-graph`
+|`{maven-group}:markup-graph:{artifact-version}`
+|standalone graph model + DSL (nodes/edges), `isAcyclic()`, `topologicalSortOrNull()`
+|none
+
+|`markup-asciidoc-writer`
+|`{maven-group}:markup-asciidoc-writer:{artifact-version}`
+|writes documents and tables as AsciiDoc source text
+|`markup-document`, `markup-table`, kotlinx-io, kotlinx-coroutines (all api)
+
+|`markup-markdown-writer`
+|`{maven-group}:markup-markdown-writer:{artifact-version}`
+|writes documents and tables as Markdown (GFM) source text
+|`markup-document`, `markup-table`, kotlinx-io, kotlinx-coroutines (all api)
+
+|`markup-dot-writer`
+|`{maven-group}:markup-dot-writer:{artifact-version}`
+|writes graphs as Graphviz DOT source text
+|`markup-graph`, kotlinx-io, kotlinx-coroutines (all api)
+|===
+
+== Dependency layering
+
+The model modules (`markup-table`, `markup-document`, `markup-graph`) have zero third-party dependencies; `markup-document` api-depends only on `markup-table`. Writer modules api-depend on their model modules plus `org.jetbrains.kotlinx:kotlinx-io-core:0.9.1` and `org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0`. Depending on a writer module therefore brings kotlinx-io and kotlinx-coroutines onto the classpath and pulls the model modules in transitively.
+
+== Supported targets
+
+All modules build the same Kotlin Multiplatform target set:
+
+[cols="1,2"]
+|===
+|Target |Notes
+
+|JVM
+|Java toolchain 17
+
+|Android
+|minSdk {min-android-api}, JVM target 11
+
+|iOS
+|`iosX64`, `iosArm64`, `iosSimulatorArm64`
+
+|Linux
+|`linuxX64`
+
+|macOS
+|`macosArm64`
+|===
+
+== Which module do I need
+
+[cols="2,2"]
+|===
+|Goal |Dependency
+
+|Build a document model only (no output)
+|`markup-document`
+
+|Build a table model only
+|`markup-table`
+
+|Build a graph model only (incl. DAG analysis)
+|`markup-graph`
+
+|Write documents or tables as AsciiDoc
+|`markup-asciidoc-writer`
+
+|Write documents or tables as Markdown (GFM)
+|`markup-markdown-writer`
+
+|Write graphs as Graphviz DOT
+|`markup-dot-writer`
+|===
+
+Writer modules pull their model modules in transitively; declaring the writer alone is sufficient:
+
+[source,kotlin,subs="attributes+"]
+----
+dependencies {
+    implementation("{maven-group}:markup-asciidoc-writer:{artifact-version}")
+}
+----

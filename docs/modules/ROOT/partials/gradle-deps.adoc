@@ -1,0 +1,10 @@
+[source,kotlin,subs="attributes+"]
+----
+kotlin {
+    sourceSets {
+        commonMain.dependencies {
+            implementation("{maven-group}:{gradle-dep-module}:{artifact-version}")
+        }
+    }
+}
+----

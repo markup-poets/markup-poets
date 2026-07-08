@@ -2,6 +2,9 @@
 
 [![Maven Central](https://img.shields.io/maven-central/v/org.markup-poet/markup-document)](https://central.sonatype.com/namespace/org.markup-poet)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-markup--poets.github.io-blue)](https://markup-poets.github.io/markup-poets/)
+
+**Documentation:** https://markup-poets.github.io/markup-poets/
 
 A type-safe Kotlin DSL for building markup documents, written out as AsciiDoc source text. Built with Kotlin Multiplatform.
 

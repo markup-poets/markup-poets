@@ -1,0 +1,103 @@
+= Build a standalone table
+
+Build and write a table without a document around it — the table DSL works on its own, in the spirit of JakeWharton/picnic. This page shows both row forms, the headerless case, and how to embed the same builder in a document.
+
+*Prerequisites:* a Kotlin project with `markup-table` on the classpath, plus a writer module such as `markup-asciidoc-writer` for output.
+
+== 1. Add the dependencies
+
+[source,kotlin,subs="attributes+"]
+----
+dependencies {
+    implementation("{maven-group}:markup-table:{artifact-version}")
+    implementation("{maven-group}:markup-asciidoc-writer:{artifact-version}")
+}
+----
+
+`markup-table` contains only the model and DSL and has zero dependencies; the writer module brings kotlinx-io and kotlinx-coroutines. See xref:reference/modules.adoc[Modules and coordinates].
+
+== 2. Build a table with a header
+
+`row(vararg cells)` and `row { cell(...) }` are interchangeable — use the vararg form for literal cells and the block form when cells are computed in a loop:
+
+[source,kotlin]
+----
+import org.markup.poet.dsl.table.table
+import org.markup.poet.dsl.write.asciidoc.toAsciidoc
+
+val t = table {
+    header {
+        cell("col 1")
+        cell("col 2")
+    }
+    row("Hello", "World")   // vararg form
+    row {                   // block form
+        cell("Hola")
+        cell("Mundo")
+    }
+}
+
+println(t.toAsciidoc())
+----
+
+A table has at most one header; a later `header { }` call replaces it.
+
+The `toAsciidoc()` output for the header case:
+
+[source,asciidoc]
+----
+|===
+|col 1|col 2
+
+| Hello
+| World
+|===
+----
+
+== 3. Handle the headerless case
+
+Without a header, the writer synthesizes a `cols` attribute from the first row's cell count, so AsciiDoc processors do not mistake the first row for a header:
+
+[source,kotlin]
+----
+val t = table {
+    row("a", "b")
+    row("c", "d")
+}
+----
+
+[source,asciidoc]
+----
+[cols="1,1"]
+|===
+| a
+| b
+
+| c
+| d
+|===
+----
+
+== 4. Embed the same builder in a document
+
+Inside a document, `section { table(title, id) { ... } }` accepts the identical builder body and adds an id and title block:
+
+[source,kotlin]
+----
+import org.markup.poet.dsl.document.article
+import org.markup.poet.dsl.write.asciidoc.toAsciidoc
+
+val doc = article("Report") {
+    section("Data") {
+        table("Greetings", id = "greetings") {
+            header {
+                cell("col 1")
+                cell("col 2")
+            }
+            row("Hello", "World")
+        }
+    }
+}
+----
+
+For the full mapping of table features to AsciiDoc syntax, see xref:reference/asciidoc-mapping.adoc[AsciiDoc mapping].

@@ -1,0 +1,64 @@
+= Stream output with Flow
+
+Consume rendered output incrementally instead of materializing the whole document as one `String` — useful for HTTP responses, large documents, or piping into channels.
+
+*Prerequisites:* a writer module on the classpath (`markup-asciidoc-writer`, `markup-markdown-writer`, or `markup-dot-writer`). Each brings kotlinx-coroutines with it; no extra dependency is needed.
+
+== 1. Get a Flow from the model
+
+Every writer exposes a streaming form: `asciidocFlow()`, `markdownFlow()`, and `dotFlow()` each return a *cold* `Flow<String>`. Nothing is rendered until the flow is collected.
+
+[source,kotlin]
+----
+import org.markup.poet.dsl.document.article
+import org.markup.poet.dsl.write.asciidoc.asciidocFlow
+
+val doc = article("T") {
+    section("A") {}
+    section("B") {}
+}
+
+val flow = doc.asciidocFlow()   // cold; renders on collection
+----
+
+== 2. Rely on the contract, not the chunking
+
+The contract, from the writer API documentation:
+
+____
+Chunks arrive in document order and concatenating all emissions yields exactly `toAsciidoc()`. Chunk boundaries are an implementation detail.
+____
+
+Currently the title line is one chunk and each top-level block is one chunk; standalone tables (and graphs in the DOT writer) stream per row. For the document above, collecting yields exactly three chunks:
+
+[source,kotlin]
+----
+val chunks = doc.asciidocFlow().toList()
+// chunks[0] == "= T\n"
+// chunks[1] == "\n== A\n"
+// chunks[2] == "\n== B\n"
+// chunks.joinToString("") == doc.toAsciidoc()
+----
+
+Do not depend on the number or size of chunks — only on their order and their concatenation. See xref:reference/writer-api.adoc[Writer API contract].
+
+== 3. Collect into a streaming consumer
+
+A typical use is forwarding chunks to a streaming HTTP response or a channel as they arrive:
+
+[source,kotlin]
+----
+suspend fun respond(doc: Markup, out: Appendable) {
+    doc.asciidocFlow().collect { chunk ->
+        // e.g. inside Ktor's respondTextWriter { }, a
+        // kotlinx.coroutines Channel, or any suspend-friendly sink
+        out.append(chunk)
+    }
+}
+----
+
+Because the flow is cold, each collection re-renders from the model; collecting twice produces the same output twice.
+
+== When to stream
+
+Use `Flow` when the consumer is asynchronous or benefits from backpressure. For synchronous file or network output, `writeAsciidocTo(sink)` is simpler — see xref:how-to/write-to-kotlinx-io-sink.adoc[Write to a kotlinx-io Sink].

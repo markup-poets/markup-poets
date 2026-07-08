@@ -1,0 +1,98 @@
+= Analyze DAGs
+
+Use `markup-graph` as a general directed-graph model: build a graph with the DSL, then check it for cycles or compute an execution order with the bundled algorithms.
+
+*Prerequisites:* `markup-graph` on the classpath (zero dependencies); optionally `markup-dot-writer` for visual output.
+
+[source,kotlin,subs="attributes+"]
+----
+dependencies {
+    implementation("{maven-group}:markup-graph:{artifact-version}")
+}
+----
+
+== 1. Model the dependencies as a digraph
+
+Edges alone are enough — nodes referenced only by edges are created implicitly:
+
+[source,kotlin]
+----
+import org.markup.poet.dsl.graph.digraph
+import org.markup.poet.dsl.graph.nodeIds
+import org.markup.poet.dsl.graph.topologicalSortOrNull
+
+val pipeline = digraph {
+    edge("build", "test")
+    edge("test", "deploy")
+    edge("build", "lint")
+}
+
+pipeline.nodeIds   // [build, test, deploy, lint] — includes implicit edge-only nodes
+----
+
+== 2. Compute an execution order
+
+`topologicalSortOrNull()` (Kahn's algorithm) returns the node ids so that every edge points from an earlier to a later entry. Nodes with equal precedence keep declaration order, so the result is deterministic:
+
+[source,kotlin]
+----
+pipeline.topologicalSortOrNull()   // [build, test, lint, deploy]
+pipeline.isAcyclic()               // true
+----
+
+== 3. Detect cycles
+
+A `null` result means the graph contains a cycle:
+
+[source,kotlin]
+----
+import org.markup.poet.dsl.graph.isAcyclic
+
+val cyclic = digraph {
+    edge("a", "b")
+    edge("b", "c")
+    edge("c", "a")
+}
+
+cyclic.topologicalSortOrNull()   // null
+cyclic.isAcyclic()               // false
+----
+
+Self-loops count as cycles too: `digraph { edge("a", "a") }.isAcyclic()` is `false`.
+
+== 4. Only directed graphs qualify
+
+Both algorithms require a directed graph; an undirected `graph { }` throws `IllegalArgumentException`:
+
+[source,kotlin]
+----
+import org.markup.poet.dsl.graph.graph
+
+val undirected = graph {
+    edge("a", "b")
+}
+
+try {
+    undirected.topologicalSortOrNull()
+} catch (e: IllegalArgumentException) {
+    // "Topological sort requires a directed graph"
+}
+----
+
+== 5. Debug cycles visually
+
+When a sort comes back `null` on a large graph, write the same model as Graphviz DOT and render it — cycles are much easier to spot on a picture:
+
+[source,kotlin]
+----
+import org.markup.poet.dsl.write.dot.toDot
+
+println(cyclic.toDot())
+----
+
+[source,bash]
+----
+dot -Tsvg pipeline.dot -o pipeline.svg
+----
+
+See xref:tutorials/graphs-and-dot.adoc[Graphs and Graphviz DOT] for the full DOT workflow, and xref:reference/dot-mapping.adoc[DOT mapping] for the syntax mapping.
