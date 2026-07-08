@@ -1,5 +1,8 @@
 # Markup Poet — Markup DSL
 
+[![Maven Central](https://img.shields.io/maven-central/v/org.markup-poet/markup-document)](https://central.sonatype.com/namespace/org.markup-poet)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
 A type-safe Kotlin DSL for building markup documents, written out as AsciiDoc source text. Built with Kotlin Multiplatform.
 
 This is the **DSL poet** of the [Markup Poet](https://github.com/markup-poets) family — a growing set of markup tools ("poets") that includes [asciidoc-kmp](https://github.com/markup-poets/asciidoc-kmp), the AsciiDoc parser.
