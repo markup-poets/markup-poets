@@ -15,7 +15,7 @@ An abstract, format-agnostic document model composed of **sub-DSLs**, each usabl
 | `markup-asciidoc-writer` | `org.markup-poet:markup-asciidoc-writer` | writes the models as AsciiDoc source text |
 | `markup-markdown-writer` | `org.markup-poet:markup-markdown-writer` | writes the models as Markdown (GFM) source text |
 
-Planned: DocBook and HTML writers as sibling modules; further sub-DSLs.
+Planned: further markup writers (e.g. DocBook) as sibling modules, and further sub-DSLs. Rendering to presentation formats (HTML, PDF) is out of scope here — that's the job of downstream tools consuming the written markup.
 
 ## Features
 
