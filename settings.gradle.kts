@@ -18,5 +18,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "markup-poet-kmp"
-include(":markup-core")
-include(":markup-asciidoc-renderer")
+include(":markup-table")
+include(":markup-document")
+include(":markup-asciidoc-writer")

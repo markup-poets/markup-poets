@@ -1,22 +1,35 @@
 # Markup Poet — Markup DSL
 
-A type-safe Kotlin DSL for building markup documents, rendered to AsciiDoc source text. Built with Kotlin Multiplatform.
+A type-safe Kotlin DSL for building markup documents, written out as AsciiDoc source text. Built with Kotlin Multiplatform.
 
 This is the **DSL poet** of the [Markup Poet](https://github.com/markup-poets) family — a growing set of markup tools ("poets") that includes [asciidoc-kmp](https://github.com/markup-poets/asciidoc-kmp), the AsciiDoc parser.
+
+## Architecture
+
+An abstract, format-agnostic document model composed of **sub-DSLs**, each usable standalone, plus **writer** modules that write the models as concrete markup formats:
+
+| Module | Coordinates | Contents |
+|---|---|---|
+| `markup-table` | `org.markup-poet:markup-table` | standalone table model + DSL (à la picnic), zero deps |
+| `markup-document` | `org.markup-poet:markup-document` | abstract document model + `article` DSL, zero deps |
+| `markup-asciidoc-writer` | `org.markup-poet:markup-asciidoc-writer` | writes the models as AsciiDoc source text |
+
+Planned: Markdown, DocBook, and HTML writers as sibling modules; further sub-DSLs.
 
 ## Features
 
 - **Type-safe DSL**: Describe documents in Kotlin — sections, paragraphs, code blocks, images, tables, nested lists
-- **Renderer-agnostic model**: The document model is independent of any output syntax; renderers plug in as separate modules (AsciiDoc today, Markdown/HTML planned)
+- **Standalone sub-DSLs**: Each sub-DSL (e.g. tables) works on its own; build and write a table without a document around it
+- **Writer modules per format**: `toAsciidoc(): String`, `writeAsciidocTo(Appendable)`, `writeAsciidocTo(Sink)` (kotlinx-io), `asciidocFlow(): Flow<String>` (streaming)
 - **Platform independent**: JVM, Android (API 24+), iOS, Linux, macOS
-- **Zero dependencies**: No external libraries
+- **Zero dependencies** in the model/DSL modules; writer modules use kotlinx-io and kotlinx-coroutines
 
 ## Quick Start
 
 ```kotlin
-import org.markup.poet.markup.dsl.article
-import org.markup.poet.markup.model.ListType
-import org.markup.poet.markup.asciidoc.renderAsciidoc
+import org.markup.poet.dsl.document.article
+import org.markup.poet.dsl.document.ListType
+import org.markup.poet.dsl.write.asciidoc.toAsciidoc
 
 val doc = article("Markup Poet") {
     section("Usage") {
@@ -26,12 +39,12 @@ val doc = article("Markup Poet") {
         }
         list(ListType.ORDERED) {
             +"build"
-            +"render"
+            +"write"
         }
     }
 }
 
-println(doc.renderAsciidoc())
+println(doc.toAsciidoc())
 ```
 
 produces AsciiDoc source text:
@@ -49,24 +62,61 @@ val doc = article {}
 ----
 
 . build
-. render
+. write
 ```
 
-`article(title) { }` renders the title as the `=` document title and starts sections at `==`, following AsciiDoc convention. The title-less form `article { }` starts sections at `=` instead.
+`article(title) { }` writes the title as the `=` document title and starts sections at `==`, following AsciiDoc convention. The title-less form `article { }` starts sections at `=` instead.
 
-## Modules
+## Standalone sub-DSLs
 
-| Module | Coordinates | Contents |
-|---|---|---|
-| `markup-core` | `org.markup-poet:markup-core` | document model + DSL, zero deps |
-| `markup-asciidoc-renderer` | `org.markup-poet:markup-asciidoc-renderer` | AsciiDoc source-text renderer |
+Sub-DSLs work without a document. The table DSL, for example:
+
+```kotlin
+import org.markup.poet.dsl.table.table
+import org.markup.poet.dsl.write.asciidoc.toAsciidoc
+
+val t = table {
+    header {
+        cell("name")
+        cell("value")
+    }
+    row("answer", "42")
+}
+
+println(t.toAsciidoc())
+```
+
+```asciidoc
+|===
+|name|value
+
+| answer
+| 42
+|===
+```
+
+The same `table { }` builder is used inside documents via `section { table("title", "id") { ... } }`.
+
+## Writers
+
+Every model type gets four write forms in a writer module:
+
+```kotlin
+doc.toAsciidoc()                 // String
+doc.writeAsciidocTo(appendable)  // any Appendable (StringBuilder, java.io.Writer, ...)
+doc.writeAsciidocTo(sink)        // kotlinx-io Sink, UTF-8; caller flushes/closes
+doc.asciidocFlow()               // cold Flow<String> of chunks, in document order;
+                                 // concatenating all chunks == toAsciidoc()
+```
+
+Note: depending on `markup-asciidoc-writer` brings kotlinx-io and kotlinx-coroutines onto your classpath; the model/DSL modules (`markup-table`, `markup-document`) stay dependency-free.
 
 ## Building
 
 ```bash
-./gradlew build                                                    # full build
-./gradlew :markup-core:jvmTest :markup-asciidoc-renderer:jvmTest   # JVM tests
-./gradlew :markup-asciidoc-renderer:linuxX64Test                   # native tests (Linux host)
+./gradlew build                                    # full build
+./gradlew :markup-table:jvmTest :markup-document:jvmTest :markup-asciidoc-writer:jvmTest
+./gradlew :markup-asciidoc-writer:linuxX64Test     # native tests (Linux host)
 ```
 
 ## License
