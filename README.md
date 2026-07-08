@@ -13,14 +13,15 @@ An abstract, format-agnostic document model composed of **sub-DSLs**, each usabl
 | `markup-table` | `org.markup-poet:markup-table` | standalone table model + DSL (à la picnic), zero deps |
 | `markup-document` | `org.markup-poet:markup-document` | abstract document model + `article` DSL, zero deps |
 | `markup-asciidoc-writer` | `org.markup-poet:markup-asciidoc-writer` | writes the models as AsciiDoc source text |
+| `markup-markdown-writer` | `org.markup-poet:markup-markdown-writer` | writes the models as Markdown (GFM) source text |
 
-Planned: Markdown, DocBook, and HTML writers as sibling modules; further sub-DSLs.
+Planned: DocBook and HTML writers as sibling modules; further sub-DSLs.
 
 ## Features
 
 - **Type-safe DSL**: Describe documents in Kotlin — sections, paragraphs, code blocks, images, tables, nested lists
 - **Standalone sub-DSLs**: Each sub-DSL (e.g. tables) works on its own; build and write a table without a document around it
-- **Writer modules per format**: `toAsciidoc(): String`, `writeAsciidocTo(Appendable)`, `writeAsciidocTo(Sink)` (kotlinx-io), `asciidocFlow(): Flow<String>` (streaming)
+- **Writer modules per format**: AsciiDoc and Markdown today — `toAsciidoc()` / `toMarkdown()`, `write*To(Appendable)`, `write*To(Sink)` (kotlinx-io), `*Flow(): Flow<String>` (streaming)
 - **Platform independent**: JVM, Android (API 24+), iOS, Linux, macOS
 - **Zero dependencies** in the model/DSL modules; writer modules use kotlinx-io and kotlinx-coroutines
 
@@ -99,7 +100,7 @@ The same `table { }` builder is used inside documents via `section { table("titl
 
 ## Writers
 
-Every model type gets four write forms in a writer module:
+Every model type gets four write forms in each writer module:
 
 ```kotlin
 doc.toAsciidoc()                 // String
@@ -107,9 +108,15 @@ doc.writeAsciidocTo(appendable)  // any Appendable (StringBuilder, java.io.Write
 doc.writeAsciidocTo(sink)        // kotlinx-io Sink, UTF-8; caller flushes/closes
 doc.asciidocFlow()               // cold Flow<String> of chunks, in document order;
                                  // concatenating all chunks == toAsciidoc()
+
+doc.toMarkdown()                 // same four forms per format
+doc.writeMarkdownTo(sink)
+doc.markdownFlow()
 ```
 
-Note: depending on `markup-asciidoc-writer` brings kotlinx-io and kotlinx-coroutines onto your classpath; the model/DSL modules (`markup-table`, `markup-document`) stay dependency-free.
+Markdown notes (GFM): block ids become `<a id="..."></a>` anchors, table titles become a bold line, headerless tables get an empty header row, image width/height are dropped (no native syntax).
+
+Note: depending on a writer module brings kotlinx-io and kotlinx-coroutines onto your classpath; the model/DSL modules (`markup-table`, `markup-document`) stay dependency-free.
 
 ## Building
 

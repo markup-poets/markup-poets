@@ -21,3 +21,4 @@ rootProject.name = "markup-poet-kmp"
 include(":markup-table")
 include(":markup-document")
 include(":markup-asciidoc-writer")
+include(":markup-markdown-writer")
