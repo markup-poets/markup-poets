@@ -12,8 +12,10 @@ An abstract, format-agnostic document model composed of **sub-DSLs**, each usabl
 |---|---|---|
 | `markup-table` | `org.markup-poet:markup-table` | standalone table model + DSL (à la picnic), zero deps |
 | `markup-document` | `org.markup-poet:markup-document` | abstract document model + `article` DSL, zero deps |
+| `markup-graph` | `org.markup-poet:markup-graph` | standalone graph model + DSL (nodes/edges), zero deps |
 | `markup-asciidoc-writer` | `org.markup-poet:markup-asciidoc-writer` | writes the models as AsciiDoc source text |
 | `markup-markdown-writer` | `org.markup-poet:markup-markdown-writer` | writes the models as Markdown (GFM) source text |
+| `markup-dot-writer` | `org.markup-poet:markup-dot-writer` | writes graphs as Graphviz DOT source text |
 
 Planned: further markup writers (e.g. DocBook) as sibling modules, and further sub-DSLs. Rendering to presentation formats (HTML, PDF) is out of scope here — that's the job of downstream tools consuming the written markup.
 
@@ -97,6 +99,31 @@ println(t.toAsciidoc())
 ```
 
 The same `table { }` builder is used inside documents via `section { table("title", "id") { ... } }`.
+
+The graph DSL works the same way — build a graph, write it as Graphviz DOT:
+
+```kotlin
+import org.markup.poet.dsl.graph.digraph
+import org.markup.poet.dsl.write.dot.toDot
+
+val g = digraph("Pipeline") {
+    node("parse") { shape = "box" }
+    node("write") { shape = "box" }
+    edge("parse", "write") { label = "model" }
+}
+
+println(g.toDot())
+```
+
+```dot
+digraph Pipeline {
+  parse [shape=box];
+  write [shape=box];
+  parse -> write [label=model];
+}
+```
+
+Render it with Graphviz: `dot -Tsvg pipeline.dot -o pipeline.svg`.
 
 ## Writers
 
