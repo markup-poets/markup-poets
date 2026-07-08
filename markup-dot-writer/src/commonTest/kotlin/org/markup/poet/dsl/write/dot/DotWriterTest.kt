@@ -111,6 +111,31 @@ class DotWriterTest {
     }
 
     @Test
+    fun attrsAreEmittedAtAllLevels() {
+        val g = digraph("Pipeline") {
+            attr("rankdir", "LR")
+            node("A") {
+                shape = "box"
+                attr("penwidth", "2")
+            }
+            edge("A", "B") {
+                attr("weight", "3")
+            }
+        }
+
+        assertEquals(
+            """
+            |digraph Pipeline {
+            |  rankdir=LR;
+            |  A [shape=box, penwidth=2];
+            |  A -> B [weight=3];
+            |}
+            |""".trimMargin(),
+            g.toDot(),
+        )
+    }
+
+    @Test
     fun writesGraphToSinkAndAppendable() {
         val g = digraph("G") {
             node("A")

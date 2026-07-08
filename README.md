@@ -125,6 +125,8 @@ digraph Pipeline {
 
 Render it with Graphviz: `dot -Tsvg pipeline.dot -o pipeline.svg`.
 
+Beyond the typed style properties, arbitrary attributes pass through at graph, node, and edge level — `attr("rankdir", "LR")`, `attr("penwidth", "2")` — so the full DOT attribute vocabulary is available. And because the graph model is generic, it covers DAG/FSM-style use cases: `markup-graph` ships `Graph.isAcyclic()` and `Graph.topologicalSortOrNull()` (Kahn's algorithm, deterministic order) for directed graphs.
+
 ## Writers
 
 Every model type gets four write forms in each writer module:

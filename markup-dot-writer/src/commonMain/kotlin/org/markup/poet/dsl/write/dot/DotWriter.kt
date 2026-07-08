@@ -44,6 +44,9 @@ private fun Graph.dotChunks(): Sequence<String> = sequence {
             append(if (directed) "digraph" else "graph")
             name?.let { append(' ').append(dotId(it)) }
             append(" {\n")
+            attrs.forEach { (key, value) ->
+                append("  ").append(dotId(key)).append('=').append(dotId(value)).append(";\n")
+            }
         }
     )
     nodes.forEach { node ->
@@ -57,12 +60,15 @@ private fun Graph.dotChunks(): Sequence<String> = sequence {
 
 private fun renderNode(node: Node, out: Appendable) {
     out.append("  ").append(dotId(node.id))
-    node.style?.let { style ->
-        val attributes = listOfNotNull(
-            style.shape?.let { "shape=${dotId(it)}" },
-            style.color?.let { "color=${dotId(it)}" },
-            style.label?.let { "label=${dotId(it)}" },
-        )
+    val attributes = buildList {
+        node.style?.let { style ->
+            style.shape?.let { add("shape=${dotId(it)}") }
+            style.color?.let { add("color=${dotId(it)}") }
+            style.label?.let { add("label=${dotId(it)}") }
+        }
+        node.attrs.forEach { (key, value) -> add("${dotId(key)}=${dotId(value)}") }
+    }
+    if (attributes.isNotEmpty()) {
         out.append(" [").append(attributes.joinToString(", ")).append(']')
     }
     out.append(";\n")
@@ -72,12 +78,15 @@ private fun renderEdge(edge: Edge, directed: Boolean, out: Appendable) {
     out.append("  ").append(dotId(edge.from))
         .append(if (directed) " -> " else " -- ")
         .append(dotId(edge.to))
-    edge.style?.let { style ->
-        val attributes = listOfNotNull(
-            style.style?.let { "style=${dotId(it)}" },
-            style.color?.let { "color=${dotId(it)}" },
-            style.label?.let { "label=${dotId(it)}" },
-        )
+    val attributes = buildList {
+        edge.style?.let { style ->
+            style.style?.let { add("style=${dotId(it)}") }
+            style.color?.let { add("color=${dotId(it)}") }
+            style.label?.let { add("label=${dotId(it)}") }
+        }
+        edge.attrs.forEach { (key, value) -> add("${dotId(key)}=${dotId(value)}") }
+    }
+    if (attributes.isNotEmpty()) {
         out.append(" [").append(attributes.joinToString(", ")).append(']')
     }
     out.append(";\n")

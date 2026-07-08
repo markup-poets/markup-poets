@@ -63,6 +63,26 @@ class GraphDslTest {
     }
 
     @Test
+    fun attrsAreCapturedAtAllLevels() {
+        val g = digraph {
+            attr("rankdir", "LR")
+            node("A") {
+                shape = "box"
+                attr("penwidth", "2")
+            }
+            edge("A", "B") {
+                attr("weight", "3")
+            }
+        }
+
+        assertEquals(mapOf("rankdir" to "LR"), g.attrs)
+        assertEquals(mapOf("penwidth" to "2"), g.nodes[0].attrs)
+        assertEquals(NodeStyle(shape = "box"), g.nodes[0].style)
+        assertEquals(mapOf("weight" to "3"), g.edges[0].attrs)
+        assertNull(g.edges[0].style)
+    }
+
+    @Test
     fun edgesMayReferenceUndeclaredNodes() {
         val g = digraph {
             edge("X", "Y")
