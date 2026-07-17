@@ -6,7 +6,7 @@ nav:
 
 asciidoc:
   attributes:
-    artifact-version: '0.1.0'
+    artifact-version: '0.2.0'
     maven-group: 'org.markup-poet'
     min-android-api: '24'
     url-repo: 'https://github.com/markup-poets/markup-poets'

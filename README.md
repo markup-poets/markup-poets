@@ -4,9 +4,9 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-markup--poets.github.io-blue)](https://markup-poets.github.io/markup-poets/)
 
-**Documentation:** https://markup-poets.github.io/markup-poets/
+**Documentation:** https://markup-poets.github.io/markup-poets/ · **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
-A type-safe Kotlin DSL for building markup documents, written out as AsciiDoc source text. Built with Kotlin Multiplatform.
+A type-safe Kotlin DSL for building markup models — documents, tables, graphs, grammars — and writing them as source text: AsciiDoc, Markdown, Graphviz DOT, or the BNF family. Built with Kotlin Multiplatform.
 
 This is the **DSL poet** of the [Markup Poet](https://github.com/markup-poets) family — a growing set of markup tools ("poets") that includes [asciidoc-kmp](https://github.com/markup-poets/asciidoc-kmp), the AsciiDoc parser.
 
