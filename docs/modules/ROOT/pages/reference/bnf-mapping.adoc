@@ -1,0 +1,300 @@
+= BNF, EBNF and ABNF mapping
+
+How `markup-bnf-writer` maps the `Grammar` model to BNF-family source text.
+
+Unlike the other writers, this one serves three notations from one model. They are the same format punctuated differently, so the notation is a `BnfFlavor` parameter on the four output forms rather than three separate writers:
+
+[source,kotlin]
+----
+grammar.toBnf()                   // EBNF — the default
+grammar.toBnf(BnfFlavor.BNF)
+grammar.toBnf(BnfFlavor.ABNF)
+----
+
+EBNF is the default because it is the only flavor that maps 1:1 to the model: it desugars nothing, so one rule in the model is one rule in the output.
+
+== Notation punctuation
+
+[cols="1,1,1,1"]
+|===
+|Element |BNF |EBNF (ISO 14977) |ABNF (RFC 5234)
+
+|defines
+|`::=`
+|`=`
+|`=`
+
+|alternation
+|`{vbar}`
+|`{vbar}`
+|`/`
+
+|concatenation
+|space
+|`,`
+|space
+
+|rule terminator
+|none
+|`;`
+|none
+
+|rule name
+|`<name>`
+|`name`
+|`name`
+
+|comment
+|none — dropped
+|`(* ... *)`
+|`; ...`
+|===
+
+== Model mapping
+
+[cols="1,2,2"]
+|===
+|Model element |Produced source |Notes
+
+|`Grammar.name`
+a|
+----
+(* Arith *)
+----
+|a leading comment line, in the flavors that have comments. Dropped entirely in BNF.
+
+|`Rule.comment`
+a|
+----
+(* the entry point *)
+----
+|a comment line directly above its rule. Dropped in BNF.
+
+|`Terminal`
+|`"while"`
+|see <<Terminal quoting>>.
+
+|`Ref`
+|`term` / `<term>`
+|emitted verbatim; a reference to an undeclared rule is written as-is, not validated.
+
+|`Empty`
+|`""`
+|the empty string (ε).
+
+|`Range`
+|`%x41-5A`
+|native in ABNF only; see <<Ranges>>.
+
+|`Seq`
+|`a, b` / `a b`
+|joined by the flavor's concatenation punctuation.
+
+|`Choice`
+|`a {vbar} b`
+|joined by the flavor's alternation punctuation.
+
+|`Optional`
+|`[x]`
+|native in EBNF and ABNF; becomes a synthetic rule in BNF.
+
+|`Repeat`
+|`+{x}+` / `*x`
+|see <<Repetition>>.
+|===
+
+== Grouping and precedence
+
+The model has no grouping node — grouping is a printing concern, not a semantic one. The writer parenthesizes by precedence instead: a `Choice` binds looser than a `Seq`, which binds looser than an atom. Parentheses appear only where they are needed:
+
+[source,kotlin]
+----
+grammar {
+    rule("a") {
+        ref("head")
+        choice { +"x"; +"y" }
+    }
+}
+----
+
+[source]
+----
+a = head, ("x" | "y");     (* EBNF — the choice needs parentheses inside a concatenation *)
+a = x | y;                 (* a top-level choice does not *)
+----
+
+Classic BNF has no parentheses at all, which is why it desugars instead.
+
+== Repetition
+
+EBNF and ABNF map `Repeat` natively, but with different reach. ABNF has a true min/max form; ISO EBNF has only `+{x}+` (zero or more) and `n * x` (exactly n), so bounds are spelled out:
+
+[cols="1,2,2"]
+|===
+|`Repeat` |EBNF |ABNF
+
+|`(x, 0, null)` — zero or more
+|`+{x}+`
+|`*x`
+
+|`(x, 1, null)` — one or more
+|`+x, {x}+`
+|`1*x`
+
+|`(x, 2, null)`
+|`+2 * x, {x}+`
+|`2*x`
+
+|`(x, 3, 3)` — exactly three
+|`3 * x`
+|`3x`
+
+|`(x, 0, 2)` — up to two
+|`[x, [x]]`
+|`*2x`
+
+|`(x, 2, 4)`
+|`2 * x, [x, [x]]`
+|`2*4x`
+|===
+
+== Classic BNF desugaring
+
+Classic BNF has no optional, repetition or grouping syntax. Every `Optional`, every `Repeat`, and every `Choice` nested inside a `Seq` therefore becomes a *synthetic rule*, emitted directly after the rule that induced it. **BNF is the only flavor whose emitted rule count differs from the model's.**
+
+[cols="1,2"]
+|===
+|Model |Synthetic rule
+
+|`Optional(x)`
+|`<r-opt> ::= x {vbar} ""`
+
+|`Repeat(x, 0, null)`
+|`<r-rep> ::= x <r-rep> {vbar} ""`
+
+|`Repeat(x, 1, null)`
+|`<r-rep> ::= x <r-rep> {vbar} x`
+
+|`Repeat(x, n, m)`
+|a choice over each permitted count, then desugared — linear in `m - n`
+
+|`Choice` inside a `Seq`
+|`<r-alt> ::= a {vbar} b`
+|===
+
+Synthetic names derive from the enclosing rule (`expr` becomes `<expr-opt>`, `<expr-rep>`, `<expr-alt>`), with a counter appended if that name is already taken by a declared or previously generated rule. Naming is deterministic, so output is stable across runs.
+
+[source,kotlin]
+----
+grammar {
+    rule("expr") {
+        ref("term")
+        zeroOrMore {
+            choice { +"+"; +"-" }
+            ref("term")
+        }
+    }
+}
+----
+
+[source]
+----
+expr = term, {("+" | "-"), term};              (* EBNF — one rule *)
+----
+
+[source]
+----
+<expr> ::= <term> <expr-rep>
+<expr-rep> ::= <expr-alt> <term> <expr-rep> | ""
+<expr-alt> ::= "+" | "-"
+----
+
+== Terminal quoting
+
+No notation in this family has a string escape, so a terminal is written by *choosing* a quote rather than escaping one:
+
+[cols="1,2"]
+|===
+|`Terminal` text |Written as (BNF/EBNF)
+
+|`while`
+|`"while"`
+
+|`say "hi"`
+|`'say "hi"'` — falls back to single quotes
+
+|`it's`
+|`"it's"`
+
+|`it's "so"`
+|`"it's ", '"', "so", '"'` — both quotes appear, so it splits into a concatenation
+|===
+
+A terminal that splits is a concatenation, and is parenthesized like one when it appears where an atom is required.
+
+=== ABNF terminals
+
+ABNF adds two constraints. Its quoted strings admit only `%x20-21 / %x23-7E`, so anything else — a quote, a newline, any non-ASCII character — leaves the string form for a `%xNN` concatenation. And RFC 5234 quoted strings are *case-insensitive*, which the model's terminals are not: a terminal containing an ASCII letter is therefore emitted as an RFC 7405 case-sensitive string, `%s"..."`. This is the one place the writer reaches past RFC 5234, and it is deliberate — plain `"abc"` would mean something the model does not.
+
+[cols="1,2"]
+|===
+|`Terminal` text |Written as (ABNF)
+
+|`abc`
+|`%s"abc"`
+
+|`+=`
+|`"+="`
+
+|`a\nb`
+|`%s"a" %x0A %s"b"`
+
+|`"`
+|`%x22`
+|===
+
+== Ranges
+
+`Range` is native in ABNF (`%x41-5A`) and has no syntax in BNF or EBNF, where it expands into a choice of single-character terminals:
+
+[source]
+----
+digit = %x30-33                      ; ABNF
+digit = "0" | "1" | "2" | "3";       (* EBNF *)
+----
+
+The expansion is capped at 256 code points. A wider range throws `IllegalArgumentException` rather than emitting an unusably large grammar — so `range(0, 0x10FFFF)` writes fine as ABNF but is rejected by the other two flavors. This is the only case where a valid model succeeds in one flavor and fails in another, and the only writer in this library that throws.
+
+== Rule names
+
+Rule names are emitted verbatim. Because none of these notations can escape a name, a name carrying punctuation that would break the output *structurally* is rejected with `IllegalArgumentException` rather than transformed — silently rewriting a name could collapse two distinct rules into one and produce a wrong grammar.
+
+[cols="1,2"]
+|===
+|Flavor |Rejected
+
+|BNF
+|empty names, and names containing `<` or `>`
+
+|EBNF
+|empty names, and names containing any of `=;{vbar},()[]{}"'`
+
+|ABNF
+|names not matching `ALPHA *(ALPHA / DIGIT / "-")`
+|===
+
+ISO 14977 strictly permits only letters, digits and spaces in a meta identifier, so `if-stmt` is technically non-conforming EBNF. The writer emits it anyway: every EBNF tool in practice accepts hyphens, and rejecting them would make the writer useless.
+
+== Flow chunking
+
+`bnfFlow(flavor)` emits chunks in this order (concatenation equals `toBnf(flavor)` exactly; boundaries are an implementation detail):
+
+. the grammar-name comment, when the grammar has a name and the flavor has comments — one chunk
+. one chunk per emitted rule, each including its comment line
+
+In `BnfFlavor.BNF` the second step includes synthetic rules, so the same model yields more chunks in BNF than in EBNF or ABNF.
+
+== See also
+
+* xref:reference/writer-api.adoc[Writer API contract] — the four output forms and writer options
+* xref:reference/modules.adoc[Modules and coordinates] — `markup-grammar` and `markup-bnf-writer`

@@ -17,6 +17,7 @@
 * xref:reference/asciidoc-mapping.adoc[AsciiDoc mapping]
 * xref:reference/markdown-mapping.adoc[Markdown (GFM) mapping]
 * xref:reference/dot-mapping.adoc[DOT mapping]
+* xref:reference/bnf-mapping.adoc[BNF, EBNF and ABNF mapping]
 
 .Explanation
 * xref:explanation/architecture.adoc[Sub-DSL architecture]

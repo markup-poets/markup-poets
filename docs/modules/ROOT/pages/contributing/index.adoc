@@ -4,7 +4,7 @@ Contributions to Markup Poet are welcome — bug reports, new writer modules, su
 
 == Repository layout
 
-The repository is a Kotlin Multiplatform Gradle build with six modules — three zero-dependency model/DSL modules and three writer modules:
+The repository is a Kotlin Multiplatform Gradle build with eight modules — four zero-dependency model/DSL modules and four writer modules:
 
 [cols="1,2"]
 |===
@@ -19,6 +19,9 @@ The repository is a Kotlin Multiplatform Gradle build with six modules — three
 |`markup-graph`
 |Standalone graph model + DSL (nodes/edges), zero dependencies
 
+|`markup-grammar`
+|Standalone grammar model + DSL (rules/expressions), zero dependencies
+
 |`markup-asciidoc-writer`
 |Writes documents and tables as AsciiDoc source text
 
@@ -27,6 +30,9 @@ The repository is a Kotlin Multiplatform Gradle build with six modules — three
 
 |`markup-dot-writer`
 |Writes graphs as Graphviz DOT source text
+
+|`markup-bnf-writer`
+|Writes grammars as BNF, EBNF or ABNF source text
 |===
 
 Keep the split intact: model modules must stay dependency-free, and IO/coroutines dependencies belong in writer modules only. The reasoning is laid out in xref:explanation/architecture.adoc[Sub-DSL architecture]; if your change touches DSL scope interfaces, read xref:explanation/dsl-scoping.adoc[DSL scoping and @DslMarker] first.
