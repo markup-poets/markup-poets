@@ -1,6 +1,6 @@
 = Writer API contract
 
-Every writer module exposes the same four output forms as extension functions on its model types. `X` stands for the format name (`Asciidoc`, `Markdown`, `Dot`); `x` for its lower-case form.
+Every writer module exposes the same four output forms as extension functions on its model types. `X` stands for the format name (`Asciidoc`, `Markdown`, `Dot`, `Bnf`); `x` for its lower-case form.
 
 == The four forms
 
@@ -25,26 +25,39 @@ Every writer module exposes the same four output forms as extension functions on
 |cold flow of output chunks in document order
 |===
 
+=== Writer options
+
+A writer that has an output option takes it as a defaulted parameter on all four forms, rather than adding functions — the four forms stay four. `markup-bnf-writer` is the only such writer today: `toBnf(flavor)`, `writeBnfTo(out, flavor)`, `writeBnfTo(sink, flavor)` and `bnfFlow(flavor)` all take an optional `BnfFlavor` (default `EBNF`). The contract below holds per flavor.
+
 == Receiver × writer matrix
 
-[cols="2,1,1,1"]
+[cols="2,1,1,1,1"]
 |===
-|Receiver |markup-asciidoc-writer |markup-markdown-writer |markup-dot-writer
+|Receiver |markup-asciidoc-writer |markup-markdown-writer |markup-dot-writer |markup-bnf-writer
 
 |`Markup` (document)
 |`toAsciidoc()`, `writeAsciidocTo(Appendable)`, `writeAsciidocTo(Sink)`, `asciidocFlow()`
 |`toMarkdown()`, `writeMarkdownTo(Appendable)`, `writeMarkdownTo(Sink)`, `markdownFlow()`
+|—
 |—
 
 |`Table` (standalone)
 |same four forms
 |same four forms
 |—
+|—
 
 |`Graph`
 |—
 |—
 |`toDot()`, `writeDotTo(Appendable)`, `writeDotTo(Sink)`, `dotFlow()`
+|—
+
+|`Grammar`
+|—
+|—
+|—
+|`toBnf()`, `writeBnfTo(Appendable)`, `writeBnfTo(Sink)`, `bnfFlow()` — each with an optional `BnfFlavor`
 |===
 
 == Packages
@@ -61,6 +74,9 @@ Every writer module exposes the same four output forms as extension functions on
 
 |`markup-dot-writer`
 |`org.markup.poet.dsl.write.dot`
+
+|`markup-bnf-writer`
+|`org.markup.poet.dsl.write.bnf`
 |===
 
 Example imports:
@@ -70,6 +86,7 @@ Example imports:
 import org.markup.poet.dsl.write.asciidoc.toAsciidoc
 import org.markup.poet.dsl.write.markdown.writeMarkdownTo
 import org.markup.poet.dsl.write.dot.dotFlow
+import org.markup.poet.dsl.write.bnf.toBnf
 ----
 
 == Contract
@@ -84,3 +101,4 @@ import org.markup.poet.dsl.write.dot.dotFlow
 * xref:reference/asciidoc-mapping.adoc[AsciiDoc mapping]
 * xref:reference/markdown-mapping.adoc[Markdown (GFM) mapping]
 * xref:reference/dot-mapping.adoc[DOT mapping]
+* xref:reference/bnf-mapping.adoc[BNF, EBNF and ABNF mapping]

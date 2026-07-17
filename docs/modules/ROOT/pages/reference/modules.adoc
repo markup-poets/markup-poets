@@ -33,15 +33,25 @@ All modules are published under the group `{maven-group}`, version `{artifact-ve
 |writes documents and tables as Markdown (GFM) source text
 |`markup-document`, `markup-table`, kotlinx-io, kotlinx-coroutines (all api)
 
+|`markup-grammar`
+|`{maven-group}:markup-grammar:{artifact-version}`
+|standalone grammar model + DSL (rules/expressions)
+|none
+
 |`markup-dot-writer`
 |`{maven-group}:markup-dot-writer:{artifact-version}`
 |writes graphs as Graphviz DOT source text
 |`markup-graph`, kotlinx-io, kotlinx-coroutines (all api)
+
+|`markup-bnf-writer`
+|`{maven-group}:markup-bnf-writer:{artifact-version}`
+|writes grammars as BNF, EBNF or ABNF source text
+|`markup-grammar`, kotlinx-io, kotlinx-coroutines (all api)
 |===
 
 == Dependency layering
 
-The model modules (`markup-table`, `markup-document`, `markup-graph`) have zero third-party dependencies; `markup-document` api-depends only on `markup-table`. Writer modules api-depend on their model modules plus `org.jetbrains.kotlinx:kotlinx-io-core:0.9.1` and `org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0`. Depending on a writer module therefore brings kotlinx-io and kotlinx-coroutines onto the classpath and pulls the model modules in transitively.
+The model modules (`markup-table`, `markup-document`, `markup-graph`, `markup-grammar`) have zero third-party dependencies; `markup-document` api-depends only on `markup-table`. Writer modules api-depend on their model modules plus `org.jetbrains.kotlinx:kotlinx-io-core:0.9.1` and `org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0`. Depending on a writer module therefore brings kotlinx-io and kotlinx-coroutines onto the classpath and pulls the model modules in transitively.
 
 == Supported targets
 
@@ -82,6 +92,9 @@ All modules build the same Kotlin Multiplatform target set:
 |Build a graph model only (incl. DAG analysis)
 |`markup-graph`
 
+|Build a grammar model only (no output)
+|`markup-grammar`
+
 |Write documents or tables as AsciiDoc
 |`markup-asciidoc-writer`
 
@@ -90,6 +103,9 @@ All modules build the same Kotlin Multiplatform target set:
 
 |Write graphs as Graphviz DOT
 |`markup-dot-writer`
+
+|Write grammars as BNF, EBNF or ABNF
+|`markup-bnf-writer`
 |===
 
 Writer modules pull their model modules in transitively; declaring the writer alone is sufficient:

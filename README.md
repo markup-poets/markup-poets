@@ -19,9 +19,11 @@ An abstract, format-agnostic document model composed of **sub-DSLs**, each usabl
 | `markup-table` | `org.markup-poet:markup-table` | standalone table model + DSL (à la picnic), zero deps |
 | `markup-document` | `org.markup-poet:markup-document` | abstract document model + `article` DSL, zero deps |
 | `markup-graph` | `org.markup-poet:markup-graph` | standalone graph model + DSL (nodes/edges), zero deps |
+| `markup-grammar` | `org.markup-poet:markup-grammar` | standalone grammar model + DSL (rules/expressions), zero deps |
 | `markup-asciidoc-writer` | `org.markup-poet:markup-asciidoc-writer` | writes the models as AsciiDoc source text |
 | `markup-markdown-writer` | `org.markup-poet:markup-markdown-writer` | writes the models as Markdown (GFM) source text |
 | `markup-dot-writer` | `org.markup-poet:markup-dot-writer` | writes graphs as Graphviz DOT source text |
+| `markup-bnf-writer` | `org.markup-poet:markup-bnf-writer` | writes grammars as BNF, EBNF or ABNF source text |
 
 Planned: further markup writers (e.g. DocBook) as sibling modules, and further sub-DSLs. Rendering to presentation formats (HTML, PDF) is out of scope here — that's the job of downstream tools consuming the written markup.
 
@@ -29,7 +31,7 @@ Planned: further markup writers (e.g. DocBook) as sibling modules, and further s
 
 - **Type-safe DSL**: Describe documents in Kotlin — sections, paragraphs, code blocks, images, tables, nested lists
 - **Standalone sub-DSLs**: Each sub-DSL (e.g. tables) works on its own; build and write a table without a document around it
-- **Writer modules per format**: AsciiDoc and Markdown today — `toAsciidoc()` / `toMarkdown()`, `write*To(Appendable)`, `write*To(Sink)` (kotlinx-io), `*Flow(): Flow<String>` (streaming)
+- **Writer modules per format**: AsciiDoc, Markdown, Graphviz DOT and the BNF family today — `toAsciidoc()` / `toMarkdown()` / `toDot()` / `toBnf()`, `write*To(Appendable)`, `write*To(Sink)` (kotlinx-io), `*Flow(): Flow<String>` (streaming)
 - **Platform independent**: JVM, Android (API 24+), iOS, Linux, macOS
 - **Zero dependencies** in the model/DSL modules; writer modules use kotlinx-io and kotlinx-coroutines
 
@@ -130,6 +132,44 @@ digraph Pipeline {
 ```
 
 Render it with Graphviz: `dot -Tsvg pipeline.dot -o pipeline.svg`.
+
+The grammar DSL follows the same shape — build a grammar, write it as BNF, EBNF or ABNF:
+
+```kotlin
+import org.markup.poet.dsl.grammar.grammar
+import org.markup.poet.dsl.write.bnf.BnfFlavor
+import org.markup.poet.dsl.write.bnf.toBnf
+
+val g = grammar {
+    rule("expr") {
+        ref("term")
+        zeroOrMore {
+            choice {
+                +"+"
+                +"-"
+            }
+            ref("term")
+        }
+    }
+}
+
+println(g.toBnf())
+```
+
+```ebnf
+expr = term, {("+" | "-"), term};
+```
+
+One model, three notations — the flavor is a parameter, not a different writer:
+
+```kotlin
+g.toBnf(BnfFlavor.ABNF)   // expr = term *(("+" / "-") term)
+g.toBnf(BnfFlavor.BNF)    // <expr> ::= <term> <expr-rep>
+                          // <expr-rep> ::= <expr-alt> <term> <expr-rep> | ""
+                          // <expr-alt> ::= "+" | "-"
+```
+
+EBNF is the default because it maps 1:1 to the model. Classic BNF has no optional, repetition or grouping syntax, so those become synthetic rules — see the [BNF mapping](https://markup-poets.github.io/markup-poets/reference/bnf-mapping.html) for the full table.
 
 Beyond the typed style properties, arbitrary attributes pass through at graph, node, and edge level — `attr("rankdir", "LR")`, `attr("penwidth", "2")` — so the full DOT attribute vocabulary is available. And because the graph model is generic, it covers DAG/FSM-style use cases: `markup-graph` ships `Graph.isAcyclic()` and `Graph.topologicalSortOrNull()` (Kahn's algorithm, deterministic order) for directed graphs.
 
